@@ -2,7 +2,7 @@ import { Sparkles, Circle, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
 
-export function ProcessingScreen({ onFinished }: { onFinished: () => void }) {
+export function ProcessingScreen({ onCancel }: { onCancel?: () => void }) {
   const [textIndex, setTextIndex] = useState(0);
   const loadingTexts = [
     'Reading your situation...',
@@ -15,15 +15,10 @@ export function ProcessingScreen({ onFinished }: { onFinished: () => void }) {
       setTextIndex((prev) => (prev + 1) % loadingTexts.length);
     }, 3000);
 
-    const finishTimer = setTimeout(() => {
-      onFinished();
-    }, 9500);
-
     return () => {
       clearInterval(timer);
-      clearTimeout(finishTimer);
     };
-  }, [onFinished]);
+  }, []);
 
   return (
     <div className="bg-[#050B14] min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -131,14 +126,16 @@ export function ProcessingScreen({ onFinished }: { onFinished: () => void }) {
       </main>
 
       {/* Cancel Button */}
-      <div className="fixed bottom-12 z-20">
-        <button 
-          onClick={onFinished} // Just for demo
-          className="bg-[#1A2C40]/50 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-slate-500 text-sm hover:text-slate-300 transition-colors active:scale-95"
-        >
-          Cancel Journey
-        </button>
-      </div>
+      {onCancel ? (
+        <div className="fixed bottom-12 z-20">
+          <button
+            onClick={onCancel}
+            className="bg-[#1A2C40]/50 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-slate-500 text-sm hover:text-slate-300 transition-colors active:scale-95"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
