@@ -8,7 +8,7 @@ export function Header({ activeTab, onTabChange }: { activeTab: string, onTabCha
     <header className="bg-[#050B14]/80 backdrop-blur-md border-b border-white/10 fixed top-0 w-full z-50">
       <div className="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => onTabChange('Home')}>
-          <span className="text-xl font-bold text-primary-container tracking-tighter font-display">WhatNext</span>
+          <span className="text-xl font-bold text-primary-container tracking-tighter font-display">whatnextai</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 font-display tracking-tight">
           {tabs.map((tab) => (
@@ -49,8 +49,8 @@ export function Footer() {
     <footer className="bg-[#050B14] border-t border-white/5 py-12">
       <div className="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-6 font-display text-sm">
         <div className="flex items-center gap-6">
-          <span className="text-primary-container font-bold">WhatNext</span>
-          <p className="text-slate-500">© 2024 WhatNext AI Guidance. Calmly navigating your future.</p>
+          <span className="text-primary-container font-bold">whatnextai</span>
+          <p className="text-slate-500">© 2026 whatnextai. Calmly navigating your future.</p>
         </div>
         <div className="flex gap-8">
           {links.map((link) => (

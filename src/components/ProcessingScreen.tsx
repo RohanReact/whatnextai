@@ -36,7 +36,7 @@ export function ProcessingScreen({ onFinished }: { onFinished: () => void }) {
       <main className="relative z-10 w-full max-w-xl flex flex-col items-center">
         {/* Logo */}
         <div className="mb-16">
-          <span className="font-display text-2xl text-primary-container tracking-tighter font-extrabold">WhatNext</span>
+          <span className="font-display text-2xl text-primary-container tracking-tighter font-extrabold">whatnextai</span>
         </div>
 
         {/* Processing Visualizer */}

@@ -119,7 +119,7 @@ export default function NavigatorChat() {
                   Back
                 </button>
                 <div>
-                  <h1 className="font-display text-lg">WhatNext Navigator</h1>
+                  <h1 className="font-display text-lg">whatnextai Navigator</h1>
                   <p className="text-[11px] text-text-dim">Online · helping with your path</p>
                 </div>
               </div>

@@ -15,7 +15,7 @@ export default function WelcomeSplash() {
   return (
     <PageWrapper>
       <main className="mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center px-6 text-center">
-        <h1 className="font-display text-5xl text-on-surface">Welcome to WhatNext</h1>
+        <h1 className="font-display text-5xl text-on-surface">Welcome to whatnextai</h1>
         <p className="mt-5 text-lg text-on-surface-variant">
           You will share your situation and what is blocking you. We will return 3 practical paths forward.
         </p>
