@@ -14,5 +14,5 @@ export default function LoadingScreen() {
     }
   }, [isLoading, currentSession, navigate])
 
-  return <ProcessingScreen onFinished={() => navigate('/results')} />
+  return <ProcessingScreen onCancel={() => navigate('/input')} />
 }
