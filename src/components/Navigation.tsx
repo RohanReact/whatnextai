@@ -2,10 +2,10 @@ import { Bell, User, Compass, Route, Bookmark, MessageSquare } from 'lucide-reac
 import { motion } from 'motion/react';
 
 export function Header({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) {
-  const tabs = ['Home', 'My Paths', 'Explore', 'History'];
+  const tabs = ['Home', 'Pricing', 'My Paths', 'Explore', 'History'];
   
   return (
-    <header className="bg-[#050B14]/80 backdrop-blur-md border-b border-white/10 fixed top-0 w-full z-50">
+    <header className="bg-background/80 backdrop-blur-md border-b border-white/10 fixed top-0 w-full z-50">
       <div className="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => onTabChange('Home')}>
           <span className="text-xl font-bold text-primary-container tracking-tighter font-display">whatnextai</span>
@@ -46,7 +46,7 @@ export function Footer() {
   const links = ['Privacy', 'Terms', 'Support', 'Twitter'];
   
   return (
-    <footer className="bg-[#050B14] border-t border-white/5 py-12">
+    <footer className="bg-background border-t border-white/5 py-12">
       <div className="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-6 font-display text-sm">
         <div className="flex items-center gap-6">
           <span className="text-primary-container font-bold">whatnextai</span>
