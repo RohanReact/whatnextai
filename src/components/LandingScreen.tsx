@@ -1,7 +1,10 @@
 import { Sparkles, CheckCircle, Lock, Brain, MessageSquare, History } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 
 export function LandingScreen({ onGetUnstuck }: { onGetUnstuck: () => void }) {
+  const navigate = useNavigate();
+
   return (
     <div className="relative min-h-screen pt-24 pb-20 overflow-hidden">
       {/* Ambient Background Pulse */}
@@ -32,14 +35,21 @@ export function LandingScreen({ onGetUnstuck }: { onGetUnstuck: () => void }) {
           <div className="pt-8 flex flex-col items-center gap-6">
             <button 
               onClick={onGetUnstuck}
-              className="group relative px-10 py-4 bg-primary-container text-[#050B14] font-display text-xl font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(244,162,97,0.3)]"
+              className="group relative px-10 py-4 bg-primary-container text-background font-display text-xl font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(244,162,97,0.3)]"
             >
               Get Unstuck →
+            </button>
+
+            <button
+              onClick={() => navigate('/pricing')}
+              className="text-sm font-display text-slate-300 hover:text-primary-container transition-colors"
+            >
+              See pricing
             </button>
             
             <div className="flex items-center gap-4 text-slate-500 font-sans text-sm">
               <span className="flex items-center gap-1"><CheckCircle size={16} /> No account needed</span>
-              <span className="h-4 w-[1px] bg-white/10"></span>
+              <span className="h-4 w-px bg-white/10"></span>
               <span className="flex items-center gap-1"><Lock size={16} /> Private & Secure</span>
             </div>
           </div>

@@ -9,6 +9,7 @@ import NavigatorChat from './pages/NavigatorChat'
 import HistoryPage from './pages/HistoryPage'
 import ErrorState from './pages/ErrorState'
 import ExplorePage from './pages/ExplorePage'
+import PricingPage from './pages/PricingPage'
 
 const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
   { path: '/chat/:id', element: <NavigatorChat /> },
   { path: '/history', element: <HistoryPage /> },
   { path: '/explore', element: <ExplorePage /> },
+  { path: '/pricing', element: <PricingPage /> },
   { path: '/error', element: <ErrorState /> },
 ])
 
