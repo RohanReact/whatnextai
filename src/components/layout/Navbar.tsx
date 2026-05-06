@@ -10,6 +10,7 @@ export default function Navbar() {
     if (location.pathname === '/pricing') return 'Pricing'
     if (location.pathname === '/history') return 'History'
     if (location.pathname === '/explore') return 'Explore'
+    if (location.pathname === '/profile') return ''
     if (location.pathname.startsWith('/results') || location.pathname.startsWith('/path') || location.pathname.startsWith('/chat')) return 'My Paths'
     return 'Home'
   })()
@@ -17,6 +18,7 @@ export default function Navbar() {
   return (
     <Header
       activeTab={activeTab}
+      onProfileClick={() => navigate('/profile')}
       onTabChange={(tab) => {
         if (tab === 'Home') navigate('/')
         if (tab === 'Pricing') navigate('/pricing')
