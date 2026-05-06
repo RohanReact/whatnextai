@@ -10,6 +10,7 @@ import HistoryPage from './pages/HistoryPage'
 import ErrorState from './pages/ErrorState'
 import ExplorePage from './pages/ExplorePage'
 import PricingPage from './pages/PricingPage'
+import ProfilePage from './pages/ProfilePage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
   { path: '/history', element: <HistoryPage /> },
   { path: '/explore', element: <ExplorePage /> },
   { path: '/pricing', element: <PricingPage /> },
+  { path: '/profile', element: <ProfilePage /> },
   { path: '/error', element: <ErrorState /> },
 ])
 

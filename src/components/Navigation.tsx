@@ -1,7 +1,17 @@
-import { Bell, User, Compass, Route, Bookmark, MessageSquare } from 'lucide-react';
+import { Bell, Compass, Route, Bookmark, MessageSquare } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export function Header({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) {
+export function Header({
+  activeTab,
+  onTabChange,
+  onProfileClick,
+  profileInitial = 'R',
+}: {
+  activeTab: string
+  onTabChange: (tab: string) => void
+  onProfileClick?: () => void
+  profileInitial?: string
+}) {
   const tabs = ['Home', 'Pricing', 'My Paths', 'Explore', 'History'];
   
   return (
@@ -33,8 +43,14 @@ export function Header({ activeTab, onTabChange }: { activeTab: string, onTabCha
           <button title="Notifications" aria-label="Notifications" className="text-slate-400 hover:bg-white/5 transition-all duration-300 p-2 rounded-full active:scale-95">
             <Bell size={20} />
           </button>
-          <button title="Profile" aria-label="Profile" className="text-slate-400 hover:bg-white/5 transition-all duration-300 p-2 rounded-full active:scale-95">
-            <User size={20} />
+          <button
+            type="button"
+            title="Profile"
+            aria-label="Open profile"
+            onClick={onProfileClick}
+            className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-[13px] font-semibold text-on-primary border-2 border-primary/30 hover:opacity-90 transition-all active:scale-95 font-display"
+          >
+            {profileInitial}
           </button>
         </div>
       </div>
