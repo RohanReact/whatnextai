@@ -43,9 +43,11 @@ export interface AppState {
   isLoading: boolean
   error: string | null
   hasSeenWelcome: boolean
+  hasCompletedOnboarding: boolean
   setCurrentSession: (session: Session) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   setHasSeenWelcome: (seen: boolean) => void
+  setHasCompletedOnboarding: (completed: boolean) => void
   addToHistory: (session: Session) => void
 }

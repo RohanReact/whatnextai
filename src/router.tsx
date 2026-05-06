@@ -10,10 +10,14 @@ import HistoryPage from './pages/HistoryPage'
 import ErrorState from './pages/ErrorState'
 import ExplorePage from './pages/ExplorePage'
 import PricingPage from './pages/PricingPage'
+import SignInPage from './pages/SignInPage'
+import SignUpPage from './pages/SignUpPage'
 
 const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
   { path: '/welcome', element: <WelcomeSplash /> },
+  { path: '/sign-in', element: <SignInPage /> },
+  { path: '/sign-up', element: <SignUpPage /> },
   { path: '/input', element: <InputForm /> },
   { path: '/loading', element: <LoadingScreen /> },
   { path: '/results', element: <ResultsPage /> },
