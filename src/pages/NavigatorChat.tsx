@@ -1,6 +1,6 @@
 import { FormEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Compass, History, Home, Loader2, PanelLeftClose, PanelLeftOpen, Route } from 'lucide-react'
+import { ArrowUp, Compass, History, Home, Loader2, PanelLeftClose, PanelLeftOpen, Route } from 'lucide-react'
 import { sendChatMessage } from '../services/api'
 import useAppStore from '../store/useAppStore'
 import { ChatMessage } from '../types'
@@ -275,9 +275,15 @@ export default function NavigatorChat() {
                   <button
                     type="submit"
                     disabled={isSending}
-                    className="rounded-full bg-primary-container px-5 py-3 font-semibold text-on-primary disabled:opacity-60"
+                    aria-label={isSending ? 'Sending message' : 'Send message'}
+                    title={isSending ? 'Sending…' : 'Send'}
+                    className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary-container text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isSending ? 'Sending...' : 'Send'}
+                    {isSending ? (
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    ) : (
+                      <ArrowUp className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                    )}
                   </button>
                 </form>
               </div>
