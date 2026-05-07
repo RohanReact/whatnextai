@@ -1,6 +1,6 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Compass, History, Home, PanelLeftClose, PanelLeftOpen, Route } from 'lucide-react'
+import { Compass, History, Home, Loader2, PanelLeftClose, PanelLeftOpen, Route } from 'lucide-react'
 import { sendChatMessage } from '../services/api'
 import useAppStore from '../store/useAppStore'
 import { ChatMessage } from '../types'
@@ -15,6 +15,23 @@ export default function NavigatorChat() {
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [isNavCollapsed, setIsNavCollapsed] = useState(false)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
+
+  /** Nested scroll panel: scroll the overflow container, not the window. */
+  useLayoutEffect(() => {
+    const el = messagesScrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [currentSession?.messages.length, isSending])
+
+  /** Let the browser paint user message + thinking row before the network await. */
+  function waitForPaint(): Promise<void> {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
+  }
 
   const pathId = Number(params.id)
   const selectedPath = useMemo(
@@ -37,9 +54,14 @@ export default function NavigatorChat() {
     }
 
     const nextMessages = [...currentSession.messages, userMessage]
+    setIsSending(true)
     setCurrentSession({ ...currentSession, messages: nextMessages, chosenPathId: pathId })
     setInput('')
-    setIsSending(true)
+
+    await waitForPaint()
+
+    const started = Date.now()
+    const minThinkingMs = 320
 
     try {
       const reply = await sendChatMessage(currentSession.id, trimmed, currentSession.messages, selectedPath.title)
@@ -48,6 +70,10 @@ export default function NavigatorChat() {
         role: 'assistant',
         content: reply,
         timestamp: new Date(),
+      }
+      const elapsed = Date.now() - started
+      if (elapsed < minThinkingMs) {
+        await new Promise((r) => setTimeout(r, minThinkingMs - elapsed))
       }
       setCurrentSession({
         ...currentSession,
@@ -63,6 +89,10 @@ export default function NavigatorChat() {
           ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
           : 'Chat request failed.'
 
+      const elapsed = Date.now() - started
+      if (elapsed < minThinkingMs) {
+        await new Promise((r) => setTimeout(r, minThinkingMs - elapsed))
+      }
       setError(message || 'Chat request failed.')
       setCurrentSession({ ...currentSession, messages: nextMessages, chosenPathId: pathId })
     } finally {
@@ -170,7 +200,7 @@ export default function NavigatorChat() {
               </div>
             ) : null}
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <div ref={messagesScrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
               {!currentSession || !selectedPath ? (
                 <div className="rounded-2xl border border-white/10 bg-surface-container-high p-6 text-on-surface-variant">
                   <p className="text-sm">No active session for chat.</p>
@@ -201,6 +231,18 @@ export default function NavigatorChat() {
                       </div>
                     </div>
                   ))}
+                  {isSending ? (
+                    <div className="flex justify-start" aria-live="polite" aria-busy="true">
+                      <div className="flex max-w-[82%] items-center gap-3 rounded-2xl border border-white/5 bg-surface-container-high px-4 py-3 text-sm text-on-surface-variant">
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary-container" aria-hidden />
+                        <div>
+                          <span className="sr-only">Assistant is thinking</span>
+                          <p className="text-xs font-medium text-text-dim">Thinking…</p>
+                          <p className="mt-0.5 text-[11px] text-on-surface-variant/80">Drafting a reply</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
