@@ -200,7 +200,10 @@ export default function NavigatorChat() {
               </div>
             ) : null}
 
-            <div ref={messagesScrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <div
+              ref={messagesScrollRef}
+              className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto scroll-smooth p-4"
+            >
               {!currentSession || !selectedPath ? (
                 <div className="rounded-2xl border border-white/10 bg-surface-container-high p-6 text-on-surface-variant">
                   <p className="text-sm">No active session for chat.</p>
