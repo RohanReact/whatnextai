@@ -82,6 +82,34 @@ body {
   margin: 0;
 }
 
+/**
+ * Dark scrollbars aligned with surface tokens (avoids default light/white tracks on Windows).
+ * Firefox: scrollbar-color thumb track. WebKit: pseudo-elements.
+ */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-outline) 65%, var(--color-surface)) var(--color-surface);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-outline) 55%, var(--color-surface-high));
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-surface);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-primary-container) 55%, var(--color-outline));
+}
+
 .glass-card {
   @apply bg-[#1A2C40]/40 backdrop-blur-xl border border-primary-container/10;
 }
