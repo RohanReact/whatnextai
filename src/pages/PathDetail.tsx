@@ -1,7 +1,13 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import PageWrapper from '../components/layout/PageWrapper'
 import useAppStore from '../store/useAppStore'
+
+function normalizeStepStatus(existing: boolean[] | undefined, stepCount: number): boolean[] {
+  if (existing?.length === stepCount) return [...existing]
+  return Array.from({ length: stepCount }, () => false)
+}
 
 export default function PathDetail() {
   const navigate = useNavigate()
@@ -16,24 +22,31 @@ export default function PathDetail() {
   )
 
   const pathKey = String(pathId)
-  const stepStatus = currentSession?.pathStepStatus?.[pathKey] ?? (path?.steps.map(() => false) || [])
+  const stepStatus = normalizeStepStatus(
+    currentSession?.pathStepStatus?.[pathKey],
+    path?.steps.length ?? 0
+  )
   const completedCount = stepStatus.filter(Boolean).length
   const totalSteps = path?.steps.length || 0
   const progress = totalSteps ? Math.round((completedCount / totalSteps) * 100) : 0
+  const isMarkingRef = useRef(false)
 
   useEffect(() => {
-    if (!currentSession || !path) return
-    if (!currentSession.pathStepStatus?.[pathKey]) {
-      setCurrentSession({
-        ...currentSession,
-        chosenPathId: path.id,
-        pathStepStatus: {
-          ...(currentSession.pathStepStatus || {}),
-          [pathKey]: path.steps.map(() => false),
-        },
-      })
-    }
-  }, [currentSession, path, pathKey, setCurrentSession])
+    if (!path) return
+    const session = useAppStore.getState().currentSession
+    if (!session) return
+    const existing = session.pathStepStatus?.[pathKey]
+    if (existing?.length === path.steps.length) return
+
+    setCurrentSession({
+      ...session,
+      chosenPathId: path.id,
+      pathStepStatus: {
+        ...(session.pathStepStatus || {}),
+        [pathKey]: path.steps.map(() => false),
+      },
+    })
+  }, [path, pathKey, setCurrentSession])
 
   const speakText = (text: string) => {
     if (!('speechSynthesis' in window)) return
@@ -44,15 +57,37 @@ export default function PathDetail() {
   }
 
   const markCurrentStepDone = () => {
-    if (!currentSession || !path) return
-    const nextSteps = [...(currentSession.pathStepStatus?.[pathKey] || path.steps.map(() => false))]
+    if (!path || isMarkingRef.current) return
+    const session = useAppStore.getState().currentSession
+    if (!session) return
+
+    const nextSteps = normalizeStepStatus(session.pathStepStatus?.[pathKey], path.steps.length)
     const firstOpenIndex = nextSteps.findIndex((done) => !done)
     if (firstOpenIndex === -1) return
+
+    isMarkingRef.current = true
     nextSteps[firstOpenIndex] = true
     setCurrentSession({
-      ...currentSession,
+      ...session,
       chosenPathId: path.id,
-      pathStepStatus: { ...(currentSession.pathStepStatus || {}), [pathKey]: nextSteps },
+      pathStepStatus: { ...(session.pathStepStatus || {}), [pathKey]: nextSteps },
+    })
+    requestAnimationFrame(() => {
+      isMarkingRef.current = false
+    })
+  }
+
+  const toggleStepAt = (index: number) => {
+    if (!path) return
+    const session = useAppStore.getState().currentSession
+    if (!session) return
+
+    const next = normalizeStepStatus(session.pathStepStatus?.[pathKey], path.steps.length)
+    next[index] = !next[index]
+    setCurrentSession({
+      ...session,
+      chosenPathId: path.id,
+      pathStepStatus: { ...(session.pathStepStatus || {}), [pathKey]: next },
     })
   }
 
@@ -74,16 +109,22 @@ export default function PathDetail() {
   return (
     <PageWrapper>
       <main className="mx-auto max-w-4xl px-6 pb-24 pt-24">
-        <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-          <button onClick={() => navigate('/results')}>Back to paths</button>
-          <span>·</span>
+        <div className="flex items-center gap-3 text-sm text-on-surface-variant">
+          <button
+            type="button"
+            onClick={() => navigate('/results')}
+            aria-label="Back to paths"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-surface-container-high text-on-surface-variant transition-all hover:border-white/20 hover:bg-surface-container-highest hover:text-on-surface active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <ArrowLeft size={18} aria-hidden />
+          </button>
           <span className="text-primary">{path.title}</span>
         </div>
 
         <section className="mt-4 rounded-2xl border border-white/10 bg-surface-container p-5">
           <div className="mb-2 flex items-center justify-between text-xs">
             <span className="text-on-surface-variant">
-              Your progress - Step {Math.min(completedCount + 1, totalSteps)} of {totalSteps}
+              Your progress — {completedCount} of {totalSteps} steps done
             </span>
             <span className="text-green-300">{progress}% complete</span>
           </div>
@@ -100,7 +141,11 @@ export default function PathDetail() {
             {path.recommended && <span className="rounded-full border border-primary-container/30 bg-primary-container/10 px-3 py-1 text-primary">Recommended</span>}
           </div>
           <p className="mt-4 text-on-surface-variant">{path.description}</p>
-          <button onClick={() => speakText(path.description)} className="mt-4 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs text-blue-300">
+          <button
+            type="button"
+            onClick={() => speakText(path.description)}
+            className="mt-4 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs text-blue-300 transition-all hover:border-blue-400/40 hover:bg-blue-500/20 hover:text-blue-200 active:scale-[0.98]"
+          >
             Read aloud
           </button>
         </section>
@@ -114,17 +159,13 @@ export default function PathDetail() {
                 <div key={`${path.id}-${index}`} className="flex gap-4">
                   <div className="flex flex-col items-center">
                     <button
-                      onClick={() => {
-                        if (!currentSession) return
-                        const next = [...stepStatus]
-                        next[index] = !next[index]
-                        setCurrentSession({
-                          ...currentSession,
-                          chosenPathId: path.id,
-                          pathStepStatus: { ...(currentSession.pathStepStatus || {}), [pathKey]: next },
-                        })
-                      }}
-                      className={`h-8 w-8 rounded-full border text-xs font-semibold ${done ? 'border-green-400 bg-green-500/10 text-green-300' : 'border-white/20 bg-surface-container-low text-on-surface-variant'}`}
+                      type="button"
+                      onClick={() => toggleStepAt(index)}
+                      className={`h-8 w-8 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
+                        done
+                          ? 'border-green-400 bg-green-500/10 text-green-300 hover:border-green-300 hover:bg-green-500/20'
+                          : 'border-white/20 bg-surface-container-low text-on-surface-variant hover:border-white/35 hover:bg-surface-container-high hover:text-on-surface'
+                      }`}
                     >
                       {done ? '✓' : index + 1}
                     </button>
@@ -132,7 +173,11 @@ export default function PathDetail() {
                   </div>
                   <div className="flex-1 pb-2">
                     <p className={`${done ? 'text-green-300' : 'text-on-surface'} text-sm leading-relaxed`}>{step}</p>
-                    <button onClick={() => speakText(step)} className="mt-1 text-xs text-blue-300">
+                    <button
+                      type="button"
+                      onClick={() => speakText(step)}
+                      className="mt-1 text-xs text-blue-300 transition-colors hover:text-blue-200 hover:underline"
+                    >
                       Read step
                     </button>
                   </div>
@@ -161,13 +206,25 @@ export default function PathDetail() {
         </section>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <button onClick={markCurrentStepDone} className="rounded-xl bg-primary-container px-5 py-3 font-semibold text-on-primary">
+          <button
+            type="button"
+            onClick={markCurrentStepDone}
+            className="rounded-xl bg-primary-container px-5 py-3 font-semibold text-on-primary transition-all hover:opacity-90 hover:shadow-lg hover:shadow-primary-container/25 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
             Mark next step done
           </button>
-          <button onClick={speakAllSteps} className="rounded-xl border border-white/15 bg-surface-container-high px-5 py-3 font-semibold text-on-surface-variant">
+          <button
+            type="button"
+            onClick={speakAllSteps}
+            className="rounded-xl border border-white/15 bg-surface-container-high px-5 py-3 font-semibold text-on-surface-variant transition-all hover:border-white/25 hover:bg-surface-container-highest hover:text-on-surface active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
             Read all steps
           </button>
-          <button onClick={() => navigate(`/chat/${path.id}`)} className="rounded-xl border border-primary-container/30 bg-primary-container/10 px-5 py-3 font-semibold text-primary">
+          <button
+            type="button"
+            onClick={() => navigate(`/chat/${path.id}`)}
+            className="rounded-xl border border-primary-container/30 bg-primary-container/10 px-5 py-3 font-semibold text-primary transition-all hover:border-primary-container/50 hover:bg-primary-container/20 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
             Open Follow-up Chat
           </button>
         </div>
