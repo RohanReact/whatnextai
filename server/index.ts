@@ -35,7 +35,7 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
 app.use(helmet())
 app.use(compression())
 app.use(cors({ origin: allowedOrigins, credentials: true }))
-app.use(express.json({ limit: '256kb' }))
+app.use(express.json({ limit: '3mb' }))
 
 // Global rate limiter — 120 req / 15 min per IP
 app.use(

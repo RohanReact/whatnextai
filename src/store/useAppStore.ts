@@ -40,7 +40,13 @@ const useAppStore = create<StoreState>()(
       setUser:        (user)  => set({ user }),
       setAccessToken: (token) => set({ accessToken: token }),
       setAuthLoading: (loading) => set({ isAuthLoading: loading }),
-      clearAuth:      () => set({ user: null, accessToken: null }),
+      clearAuth:      () =>
+        set({
+          user:            null,
+          accessToken:     null,
+          currentSession:  null,
+          history:         [],
+        }),
     }),
     {
       name: 'whatnext-storage',

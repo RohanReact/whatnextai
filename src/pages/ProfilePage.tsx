@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate }         from 'react-router-dom'
-import { LogOut, Pencil, ArrowRight } from 'lucide-react'
+import { LogOut, Pencil, ArrowRight, X } from 'lucide-react'
 import PageWrapper   from '../components/layout/PageWrapper'
 import useAppStore   from '../store/useAppStore'
 import { authService }  from '../services/auth'
-import { fetchMe, updateProfile } from '../services/api'
+import { clearAllHistory, deleteAccount, fetchMe, updateProfile, uploadAvatar } from '../services/api'
 
 // ---- Types -------------------------------------------------------
 
@@ -99,6 +99,13 @@ const normalizeProfileData = (raw: unknown): ProfileData => {
 
 const LANGUAGES = ['English', 'हिंदी', 'বাংলা', 'தமிழ்'] as const
 
+const LIFE_STAGES = [
+  { key: 'Student',        icon: '🎓' },
+  { key: 'Working',        icon: '💼' },
+  { key: 'Business owner', icon: '🚀' },
+  { key: 'Job seeking',    icon: '🔍' },
+] as const
+
 const LIFE_STAGE_ICONS: Record<string, string> = {
   'Student':        '🎓',
   'Working':        '💼',
@@ -118,6 +125,9 @@ const getInitials = (name: string | null, email: string): string => {
   if (name && name.trim()) return name.trim()[0].toUpperCase()
   return email[0].toUpperCase()
 }
+
+const btnBase =
+  'cursor-pointer transition-all active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50'
 
 const relativeDate = (iso: string): string => {
   const diff = Date.now() - new Date(iso).getTime()
@@ -168,6 +178,17 @@ export default function ProfilePage() {
   const [error,      setError]     = useState<string | null>(null)
   const [activeLang, setActiveLang] = useState('English')
   const [isSavingLang, setIsSavingLang] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ displayName: '', location: '', lifeStage: '' })
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [isClearingHistory, setIsClearingHistory] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   // Redirect to sign-in if not logged in
   useEffect(() => {
@@ -200,10 +221,112 @@ export default function ProfilePage() {
     return () => { cancelled = true }
   }, [])
 
+  const reloadProfile = async () => {
+    const profileData = await fetchMe()
+    const normalized = normalizeProfileData(profileData)
+    setData(normalized)
+    setActiveLang(normalized.user.preferredLanguage || 'English')
+  }
+
+  const openEditModal = () => {
+    if (!data) return
+    setEditForm({
+      displayName: data.user.displayName || '',
+      location: data.user.location || '',
+      lifeStage: data.user.lifeStage || '',
+    })
+    setAvatarPreview(data.user.avatarUrl)
+    setPendingAvatarFile(null)
+    setEditError(null)
+    setIsEditOpen(true)
+  }
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      setEditError('Please choose a JPEG, PNG, WebP, or GIF image.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setEditError('Image must be 2 MB or smaller.')
+      return
+    }
+    setPendingAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+    setEditError(null)
+    event.target.value = ''
+  }
+
+  const handleSaveProfile = async () => {
+    if (!data) return
+    setIsSavingProfile(true)
+    setEditError(null)
+    try {
+      if (pendingAvatarFile) {
+        await uploadAvatar(pendingAvatarFile)
+      }
+      await updateProfile({
+        displayName: editForm.displayName.trim(),
+        location: editForm.location.trim(),
+        lifeStage: editForm.lifeStage || undefined,
+      })
+      await reloadProfile()
+      setIsEditOpen(false)
+      setPendingAvatarFile(null)
+      setActionMessage('Profile updated.')
+    } catch {
+      setEditError('Could not save profile. Please try again.')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
   const handleSignOut = async () => {
-    await authService.signOut()
+    setIsSigningOut(true)
+    setActionMessage(null)
+    try {
+      await authService.signOut()
+    } catch {
+      setActionMessage('Sign out failed. Please try again.')
+      setIsSigningOut(false)
+      return
+    }
     clearAuth()
     navigate('/sign-in')
+  }
+
+  const handleClearHistory = async () => {
+    if (!window.confirm('Clear all session history? This cannot be undone.')) return
+    setIsClearingHistory(true)
+    setActionMessage(null)
+    try {
+      await clearAllHistory()
+      useAppStore.getState().setCurrentSession(null)
+      await reloadProfile()
+      setActionMessage('History cleared.')
+    } catch {
+      setActionMessage('Could not clear history. Please try again.')
+    } finally {
+      setIsClearingHistory(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Permanently delete your account and all data? This cannot be undone.')) return
+    setIsDeletingAccount(true)
+    setActionMessage(null)
+    try {
+      await deleteAccount()
+      try {
+        await authService.signOut()
+      } catch { /* session may already be invalid */ }
+      clearAuth()
+      navigate('/sign-in')
+    } catch {
+      setActionMessage('Could not delete account. Please try again.')
+      setIsDeletingAccount(false)
+    }
   }
 
   const handleLangChange = async (lang: string) => {
@@ -253,6 +376,8 @@ export default function ProfilePage() {
       : []),
   ]
 
+  const editInitials = getInitials(editForm.displayName || null, user.email)
+
   return (
     <PageWrapper>
       <main className="pt-28 pb-20 px-6 max-w-[720px] mx-auto">
@@ -260,6 +385,27 @@ export default function ProfilePage() {
           <h1 className="font-display text-2xl font-semibold text-on-surface tracking-tight">My Profile</h1>
           <p className="mt-1 text-sm text-outline">Manage your account, preferences, and usage</p>
         </header>
+
+        {actionMessage && (
+          <p
+            className={`mb-4 rounded-lg border px-4 py-2.5 text-sm ${
+              actionMessage.startsWith('Could not')
+                ? 'border-red-500/20 bg-red-500/10 text-red-300'
+                : 'border-primary/20 bg-primary/10 text-primary'
+            }`}
+          >
+            {actionMessage}
+          </p>
+        )}
+
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          aria-label="Upload profile photo"
+          onChange={handleAvatarFileChange}
+        />
 
         {/* ── Hero ── */}
         <section className="bg-surface-container border-[0.5px] border-[#2a2c2c] rounded-2xl p-6 mb-4 flex flex-col sm:flex-row gap-5 items-center">
@@ -277,8 +423,9 @@ export default function ProfilePage() {
             )}
             <button
               type="button"
-              aria-label="Edit avatar"
-              className="absolute bottom-0 right-0 w-[22px] h-[22px] rounded-full bg-primary border-2 border-surface-container flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity"
+              aria-label="Edit profile photo"
+              onClick={openEditModal}
+              className={`absolute bottom-0 right-0 w-[22px] h-[22px] rounded-full bg-primary border-2 border-surface-container flex items-center justify-center text-on-primary hover:opacity-90 hover:scale-105 ${btnBase}`}
             >
               <Pencil className="w-2.5 h-2.5" strokeWidth={2.5} />
             </button>
@@ -301,7 +448,8 @@ export default function ProfilePage() {
 
           <button
             type="button"
-            className="shrink-0 py-2 px-4 bg-surface-container-low border-[0.5px] border-[#2a2c2c] rounded-lg text-xs font-medium text-outline hover:border-outline-variant hover:text-on-surface transition-colors font-sans"
+            onClick={openEditModal}
+            className={`shrink-0 py-2 px-4 bg-surface-container-low border-[0.5px] border-[#2a2c2c] rounded-lg text-xs font-medium text-outline hover:border-outline-variant hover:bg-surface-container-high hover:text-on-surface font-sans ${btnBase}`}
           >
             Edit profile
           </button>
@@ -325,12 +473,7 @@ export default function ProfilePage() {
 
         {/* ── Personal information ── */}
         <section className="bg-surface-container border-[0.5px] border-[#2a2c2c] rounded-[14px] p-5 mb-3.5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[13px] font-semibold text-on-surface">Personal information</h2>
-            <button type="button" className="text-xs text-primary bg-transparent border-none font-sans cursor-pointer hover:underline">
-              Edit →
-            </button>
-          </div>
+          <h2 className="text-[13px] font-semibold text-on-surface mb-4">Personal information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { label: 'Full name',   value: user.displayName || '—' },
@@ -360,10 +503,10 @@ export default function ProfilePage() {
                 key={lang}
                 type="button"
                 onClick={() => handleLangChange(lang)}
-                className={`py-1.5 px-3.5 rounded-full text-xs font-medium border-[0.5px] transition-all cursor-pointer font-sans ${
+                className={`py-1.5 px-3.5 rounded-full text-xs font-medium border-[0.5px] font-sans ${btnBase} ${
                   activeLang === lang
                     ? 'bg-primary/10 border-primary/30 text-primary'
-                    : 'border-[#2a2c2c] text-outline bg-surface-container-low hover:border-outline-variant'
+                    : 'border-[#2a2c2c] text-outline bg-surface-container-low hover:border-outline-variant hover:bg-surface-container-high hover:text-on-surface'
                 }`}
               >
                 {lang}
@@ -410,7 +553,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => navigate('/pricing')}
-              className="w-full py-3 rounded-[10px] text-[13px] font-semibold text-on-primary font-sans bg-linear-to-br from-primary-container to-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
+              className={`w-full py-3 rounded-[10px] text-[13px] font-semibold text-on-primary font-sans bg-linear-to-br from-primary-container to-primary hover:opacity-95 hover:shadow-lg hover:shadow-primary-container/20 flex items-center justify-center gap-2 ${btnBase}`}
             >
               ⚡ Upgrade to Navigator — ₹299/month
               <ArrowRight className="w-3.5 h-3.5" />
@@ -425,7 +568,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => navigate('/history')}
-              className="text-xs text-primary bg-transparent border-none font-sans cursor-pointer hover:underline"
+              className={`text-xs text-primary bg-transparent border-none font-sans hover:underline ${btnBase}`}
             >
               View all →
             </button>
@@ -434,7 +577,7 @@ export default function ProfilePage() {
           {recentSessions.length === 0 ? (
             <p className="text-sm text-outline-variant text-center py-4">
               No sessions yet.{' '}
-              <button type="button" onClick={() => navigate('/input')} className="text-primary hover:underline">
+              <button type="button" onClick={() => navigate('/input')} className={`text-primary hover:underline ${btnBase}`}>
                 Start your first analysis →
               </button>
             </p>
@@ -443,7 +586,7 @@ export default function ProfilePage() {
               {recentSessions.map((s) => (
                 <li
                   key={s.id}
-                  className="flex gap-3 items-start py-2.5 border-b-[0.5px] border-surface-container-low last:border-none last:pb-0 cursor-pointer hover:opacity-80 transition-opacity"
+                  className={`flex gap-3 items-start py-2.5 border-b-[0.5px] border-surface-container-low last:border-none last:pb-0 hover:bg-surface-container-low/50 rounded-lg px-1 -mx-1 transition-colors ${btnBase}`}
                   onClick={() => navigate('/history')}
                 >
                   <div className="w-[34px] h-[34px] rounded-[9px] bg-surface-container-low flex items-center justify-center text-base shrink-0 select-none">
@@ -479,9 +622,11 @@ export default function ProfilePage() {
               </div>
               <button
                 type="button"
-                className="py-2 px-3.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/8 border-[0.5px] border-red-500/20 hover:bg-red-500/15 transition-colors font-sans whitespace-nowrap self-start sm:self-center"
+                onClick={handleClearHistory}
+                disabled={isClearingHistory}
+                className={`py-2 px-3.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/8 border-[0.5px] border-red-500/20 hover:bg-red-500/15 hover:border-red-500/35 font-sans whitespace-nowrap self-start sm:self-center ${btnBase}`}
               >
-                Clear history
+                {isClearingHistory ? 'Clearing…' : 'Clear history'}
               </button>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -491,9 +636,11 @@ export default function ProfilePage() {
               </div>
               <button
                 type="button"
-                className="py-2 px-3.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/8 border-[0.5px] border-red-500/20 hover:bg-red-500/15 transition-colors font-sans whitespace-nowrap self-start sm:self-center"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount}
+                className={`py-2 px-3.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/8 border-[0.5px] border-red-500/20 hover:bg-red-500/15 hover:border-red-500/35 font-sans whitespace-nowrap self-start sm:self-center ${btnBase}`}
               >
-                Delete account
+                {isDeletingAccount ? 'Deleting…' : 'Delete account'}
               </button>
             </div>
           </div>
@@ -503,11 +650,137 @@ export default function ProfilePage() {
         <button
           type="button"
           onClick={handleSignOut}
-          className="w-full py-3.5 bg-surface-container border-[0.5px] border-[#2a2c2c] rounded-xl text-sm font-medium text-outline hover:border-outline-variant hover:text-on-surface transition-colors font-sans flex items-center justify-center gap-2"
+          disabled={isSigningOut}
+          className={`w-full py-3.5 bg-surface-container border-[0.5px] border-[#2a2c2c] rounded-xl text-sm font-medium text-outline hover:border-outline-variant hover:bg-surface-container-high hover:text-on-surface font-sans flex items-center justify-center gap-2 ${btnBase}`}
         >
           <LogOut className="w-4 h-4" strokeWidth={1.4} />
-          Sign out
+          {isSigningOut ? 'Signing out…' : 'Sign out'}
         </button>
+
+        {isEditOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-profile-title"
+            onClick={() => !isSavingProfile && setIsEditOpen(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-[#2a2c2c] bg-surface-container p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-5 flex items-center justify-between">
+                <h2 id="edit-profile-title" className="font-display text-lg font-semibold text-on-surface">
+                  Edit profile
+                </h2>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={() => !isSavingProfile && setIsEditOpen(false)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-outline hover:bg-surface-container-high hover:text-on-surface ${btnBase}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mb-5 flex flex-col items-center gap-3">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="" className="h-20 w-20 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-linear-to-br from-primary-container to-primary font-display text-2xl font-bold text-on-primary">
+                    {editInitials}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className={`text-xs font-medium text-primary hover:underline ${btnBase}`}
+                >
+                  Change photo
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-outline">Full name</span>
+                  <input
+                    type="text"
+                    value={editForm.displayName}
+                    onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
+                    maxLength={100}
+                    className="w-full rounded-[10px] border border-white/10 bg-surface-container-low px-3.5 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary/40"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-outline">Email</span>
+                  <input
+                    type="email"
+                    value={user.email}
+                    disabled
+                    className="w-full cursor-not-allowed rounded-[10px] border border-white/10 bg-surface-container-low/50 px-3.5 py-2.5 text-sm text-outline-variant"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-outline">Location</span>
+                  <input
+                    type="text"
+                    value={editForm.location}
+                    onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+                    maxLength={100}
+                    placeholder="City, country"
+                    className="w-full rounded-[10px] border border-white/10 bg-surface-container-low px-3.5 py-2.5 text-sm text-on-surface outline-none transition placeholder:text-outline-variant focus:border-primary/40"
+                  />
+                </label>
+
+                <div>
+                  <span className="mb-2 block text-xs font-medium text-outline">Life stage</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {LIFE_STAGES.map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setEditForm((f) => ({ ...f, lifeStage: opt.key }))}
+                        className={`rounded-[10px] border px-3 py-2 text-center text-xs font-medium ${btnBase} ${
+                          editForm.lifeStage === opt.key
+                            ? 'border-primary/30 bg-primary/10 text-primary'
+                            : 'border-white/10 bg-surface-container-low text-outline hover:border-outline-variant hover:text-on-surface'
+                        }`}
+                      >
+                        <span className="block text-base">{opt.icon}</span>
+                        {opt.key}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {editError && (
+                <p className="mt-3 text-xs text-red-300">{editError}</p>
+              )}
+
+              <div className="mt-6 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => !isSavingProfile && setIsEditOpen(false)}
+                  disabled={isSavingProfile}
+                  className={`flex-1 rounded-[10px] border border-white/10 py-2.5 text-sm font-medium text-outline hover:bg-surface-container-high hover:text-on-surface ${btnBase}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  className={`flex-1 rounded-[10px] bg-primary py-2.5 text-sm font-semibold text-on-primary hover:opacity-90 ${btnBase}`}
+                >
+                  {isSavingProfile ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </PageWrapper>
   )

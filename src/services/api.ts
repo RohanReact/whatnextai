@@ -85,8 +85,30 @@ export const updateProfile = async (updates: {
   location?:          string
   lifeStage?:         string
   preferredLanguage?: string
+  avatarUrl?:         string | null
 }) => {
   await api.patch('/users/me', updates)
+}
+
+export const uploadAvatar = async (file: File): Promise<string> => {
+  const mimeType = file.type || 'image/jpeg'
+  const imageBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Could not read image file.'))
+    reader.readAsDataURL(file)
+  })
+
+  const response = await api.post('/users/me/avatar', { imageBase64, mimeType })
+  return response.data.data.avatarUrl as string
+}
+
+export const clearAllHistory = async () => {
+  await api.delete('/users/me/sessions')
+}
+
+export const deleteAccount = async () => {
+  await api.delete('/users/me')
 }
 
 // ---- Waitlist ----
