@@ -107,21 +107,36 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
   })
 })
 
+const AVATAR_BUCKET = 'avatars'
+const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024
+
+const extForMime = (mime: string): string => {
+  switch (mime) {
+    case 'image/png':  return 'png'
+    case 'image/webp': return 'webp'
+    case 'image/gif':  return 'gif'
+    default:           return 'jpg'
+  }
+}
+
 // PATCH /users/me — update editable profile fields
 router.patch('/me', requireAuth, async (req: Request, res: Response) => {
   const userId = req.user!.id
-  const { displayName, location, lifeStage, preferredLanguage } = req.body as {
+  const { displayName, location, lifeStage, preferredLanguage, avatarUrl } = req.body as {
     displayName?:       string
     location?:          string
     lifeStage?:         string
     preferredLanguage?: string
+    avatarUrl?:         string | null
   }
 
-  const updates: Record<string, string> = {}
-  if (displayName       !== undefined) updates.display_name       = displayName.slice(0, 100)
-  if (location          !== undefined) updates.location           = location.slice(0, 100)
-  if (lifeStage         !== undefined) updates.life_stage         = lifeStage.slice(0, 50)
+  const updates: Record<string, string | null> = {}
+  if (displayName       !== undefined) updates.display_name       = displayName.trim().slice(0, 100) || null
+  if (location          !== undefined) updates.location           = location.trim().slice(0, 100) || null
+  if (lifeStage         !== undefined) updates.life_stage         = lifeStage.trim().slice(0, 50) || null
   if (preferredLanguage !== undefined) updates.preferred_language = preferredLanguage.slice(0, 30)
+  if (avatarUrl         !== undefined) updates.avatar_url         = avatarUrl
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ success: false, error: 'No fields to update.' })
@@ -131,6 +146,93 @@ router.patch('/me', requireAuth, async (req: Request, res: Response) => {
 
   if (error) {
     return res.status(500).json({ success: false, error: 'Failed to update profile.' })
+  }
+
+  return res.json({ success: true })
+})
+
+// POST /users/me/avatar — upload profile photo (base64 JSON body)
+router.post('/me/avatar', requireAuth, async (req: Request, res: Response) => {
+  const userId = req.user!.id
+  const { imageBase64, mimeType } = req.body as { imageBase64?: string; mimeType?: string }
+
+  if (!imageBase64 || typeof imageBase64 !== 'string') {
+    return res.status(400).json({ success: false, error: 'imageBase64 is required.' })
+  }
+
+  const mime = typeof mimeType === 'string' && ALLOWED_AVATAR_TYPES.has(mimeType)
+    ? mimeType
+    : 'image/jpeg'
+
+  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64
+  let buffer: Buffer
+  try {
+    buffer = Buffer.from(base64Data, 'base64')
+  } catch {
+    return res.status(400).json({ success: false, error: 'Invalid image data.' })
+  }
+
+  if (buffer.length === 0 || buffer.length > MAX_AVATAR_BYTES) {
+    return res.status(400).json({ success: false, error: 'Image must be between 1 byte and 2 MB.' })
+  }
+
+  const objectPath = `${userId}/avatar.${extForMime(mime)}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(objectPath, buffer, { contentType: mime, upsert: true })
+
+  if (uploadError) {
+    console.error('[Storage] avatar upload failed:', uploadError.message)
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to upload avatar. Ensure the avatars storage bucket exists in Supabase.',
+    })
+  }
+
+  const { data: publicData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(objectPath)
+  const avatarUrl = `${publicData.publicUrl}?t=${Date.now()}`
+
+  const { error: dbError } = await supabase
+    .from('users')
+    .update({ avatar_url: avatarUrl })
+    .eq('id', userId)
+
+  if (dbError) {
+    return res.status(500).json({ success: false, error: 'Failed to save avatar URL.' })
+  }
+
+  return res.json({ success: true, data: { avatarUrl } })
+})
+
+// DELETE /users/me/sessions — clear all session history
+router.delete('/me/sessions', requireAuth, async (req: Request, res: Response) => {
+  const userId = req.user!.id
+
+  const { error } = await supabase.from('sessions').delete().eq('user_id', userId)
+
+  if (error) {
+    console.error('[DB] clear sessions failed:', error.message)
+    return res.status(500).json({ success: false, error: 'Failed to clear history.' })
+  }
+
+  return res.json({ success: true })
+})
+
+// DELETE /users/me — permanently delete account
+router.delete('/me', requireAuth, async (req: Request, res: Response) => {
+  const userId = req.user!.id
+
+  const { error: storageError } = await supabase.storage.from(AVATAR_BUCKET).remove([`${userId}/avatar.jpg`, `${userId}/avatar.png`, `${userId}/avatar.webp`, `${userId}/avatar.gif`])
+  if (storageError) {
+    console.warn('[Storage] avatar cleanup:', storageError.message)
+  }
+
+  const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+
+  if (authError) {
+    console.error('[Auth] delete user failed:', authError.message)
+    return res.status(500).json({ success: false, error: 'Failed to delete account.' })
   }
 
   return res.json({ success: true })
