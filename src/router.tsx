@@ -13,22 +13,28 @@ import PricingPage from './pages/PricingPage'
 import ProfilePage from './pages/ProfilePage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
+import RouteErrorBoundary from './pages/RouteErrorBoundary'
 
 const router = createBrowserRouter([
-  { path: '/', element: <HomePage /> },
-  { path: '/welcome', element: <WelcomeSplash /> },
-  { path: '/sign-in', element: <SignInPage /> },
-  { path: '/sign-up', element: <SignUpPage /> },
-  { path: '/input', element: <InputForm /> },
-  { path: '/loading', element: <LoadingScreen /> },
-  { path: '/results', element: <ResultsPage /> },
-  { path: '/path/:id', element: <PathDetail /> },
-  { path: '/chat/:id', element: <NavigatorChat /> },
-  { path: '/history', element: <HistoryPage /> },
-  { path: '/explore', element: <ExplorePage /> },
-  { path: '/pricing', element: <PricingPage /> },
-  { path: '/profile', element: <ProfilePage /> },
-  { path: '/error', element: <ErrorState /> },
+  {
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/welcome', element: <WelcomeSplash /> },
+      { path: '/sign-in', element: <SignInPage /> },
+      { path: '/sign-up', element: <SignUpPage /> },
+      { path: '/input', element: <InputForm /> },
+      { path: '/loading', element: <LoadingScreen /> },
+      { path: '/results', element: <ResultsPage /> },
+      { path: '/path/:id', element: <PathDetail /> },
+      { path: '/chat/:id', element: <NavigatorChat /> },
+      { path: '/history', element: <HistoryPage /> },
+      { path: '/explore', element: <ExplorePage /> },
+      { path: '/pricing', element: <PricingPage /> },
+      { path: '/profile', element: <ProfilePage /> },
+      { path: '/error', element: <ErrorState /> },
+    ],
+  },
 ])
 
 export default router
