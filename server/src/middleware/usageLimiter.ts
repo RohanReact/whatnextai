@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import { supabase } from '../services/supabase.js'
+import { getAnalysisQuota } from '../services/usageQuota.js'
 
 // ---- Plan limits ------------------------------------------------
 
@@ -29,26 +30,17 @@ export async function analyzeUsageLimiter(
   if (limits.analyses === Infinity) return next()
 
   try {
-    const { data: usage } = await supabase
-      .from('user_usage')
-      .select('analyses_this_month, period_start')
-      .eq('user_id', user.id)
-      .single()
+    const quota = await getAnalysisQuota(user.id, user.subscription_tier)
 
-    const used = usage?.analyses_this_month ?? 0
-
-    if (used >= limits.analyses) {
-      const now    = new Date()
-      const resetAt = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
-
+    if (!quota.allowed && quota.limit != null) {
       return res.status(429).json({
         success:   false,
         error:     'LIMIT_REACHED',
         limitType: 'analyses',
-        used,
-        limit:     limits.analyses,
-        resetAt,
-        message:   `You've used all ${limits.analyses} free analyses this month. Resets on ${new Date(resetAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}.`,
+        used:      quota.used,
+        limit:     quota.limit,
+        resetAt:   quota.resetAt,
+        message:   quota.message,
       })
     }
   } catch (err) {

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import type { Request, Response } from 'express'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { supabase }    from '../services/supabase.js'
+import { getAnalysisQuota } from '../services/usageQuota.js'
 import type { SubscriptionTier } from '../types/index.js'
 
 const router = Router()
@@ -11,6 +12,17 @@ const PLAN_LIMITS: Record<SubscriptionTier, { analyses: number | null; chat: num
   navigator: { analyses: null, chat: null },
   guide:     { analyses: null, chat: null },
 }
+
+// GET /users/me/quota — analysis allowance (check before starting an analysis)
+router.get('/me/quota', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const quota = await getAnalysisQuota(req.user!.id, req.user!.subscription_tier)
+    return res.json({ success: true, data: quota })
+  } catch (err) {
+    console.error('[users] quota check failed:', err)
+    return res.status(500).json({ success: false, error: 'Could not check usage quota.' })
+  }
+})
 
 // GET /users/me — full profile + live usage + stats
 router.get('/me', requireAuth, async (req: Request, res: Response) => {
