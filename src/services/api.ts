@@ -80,6 +80,20 @@ export const fetchMe = async () => {
   return response.data.data
 }
 
+export interface AnalysisQuota {
+  allowed: boolean
+  used: number
+  limit: number | null
+  resetAt: string
+  message: string | null
+  tier: string
+}
+
+export const fetchAnalysisQuota = async (): Promise<AnalysisQuota> => {
+  const response = await api.get('/users/me/quota')
+  return response.data.data as AnalysisQuota
+}
+
 export const updateProfile = async (updates: {
   displayName?:       string
   location?:          string
@@ -127,9 +141,27 @@ export interface LimitReachedPayload {
 }
 
 export const isLimitReachedError = (err: unknown): LimitReachedPayload | null => {
-  const axiosErr = err as AxiosError<{ error?: string } & LimitReachedPayload>
+  const axiosErr = err as AxiosError<{ error?: string; message?: string } & LimitReachedPayload>
   if (axiosErr?.response?.status === 429 && axiosErr.response.data?.error === 'LIMIT_REACHED') {
-    return axiosErr.response.data as LimitReachedPayload
+    const data = axiosErr.response.data
+    return {
+      limitType: data.limitType ?? 'analyses',
+      used:      data.used ?? 0,
+      limit:     data.limit ?? 0,
+      resetAt:   data.resetAt,
+      message:   data.message ?? 'You have reached your plan limit.',
+    }
   }
   return null
+}
+
+export const quotaToLimitPayload = (quota: AnalysisQuota): LimitReachedPayload | null => {
+  if (quota.allowed || quota.limit == null) return null
+  return {
+    limitType: 'analyses',
+    used:      quota.used,
+    limit:     quota.limit,
+    resetAt:   quota.resetAt,
+    message:   quota.message ?? `You've used all ${quota.limit} free analyses this month.`,
+  }
 }
