@@ -2,8 +2,10 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import PageWrapper from '../components/layout/PageWrapper'
+import GuestAuthBanner from '../components/GuestAuthBanner'
 import LimitReachedModal from '../components/LimitReachedModal'
 import Toggle from '../components/ui/Toggle'
+import { GUEST_ANALYSIS_LIMIT } from '../constants/guest'
 import {
   analyzeInput,
   fetchAnalysisQuota,
@@ -24,6 +26,8 @@ const btnBase =
 export default function InputForm() {
   const navigate = useNavigate()
   const authUser = useAppStore((state) => state.user)
+  const guestAnalysesUsed = useAppStore((state) => state.guestAnalysesUsed)
+  const markGuestAnalysisUsed = useAppStore((state) => state.markGuestAnalysisUsed)
   const setCurrentSession = useAppStore((state) => state.setCurrentSession)
   const addToHistory = useAppStore((state) => state.addToHistory)
   const setLoading = useAppStore((state) => state.setLoading)
@@ -68,8 +72,14 @@ export default function InputForm() {
     setLimitModalOpen(false)
   }
 
+  const isGuest = !authUser
+  const guestAtLimit = isGuest && guestAnalysesUsed >= GUEST_ANALYSIS_LIMIT
+
   const checkQuotaBeforeAnalyze = async (): Promise<boolean> => {
-    if (!authUser) return true
+    if (isGuest) {
+      if (guestAtLimit) return false
+      return true
+    }
 
     try {
       const latest = await fetchAnalysisQuota()
@@ -94,6 +104,8 @@ export default function InputForm() {
     const canProceed = await checkQuotaBeforeAnalyze()
     if (!canProceed) return
 
+    if (isGuest && guestAtLimit) return
+
     setIsSubmitting(true)
     setLoading(true)
     navigate('/loading')
@@ -113,6 +125,7 @@ export default function InputForm() {
 
       setCurrentSession(session)
       addToHistory(session)
+      if (isGuest) markGuestAnalysisUsed()
       await refreshQuota()
       navigate('/results')
     } catch (error: unknown) {
@@ -150,8 +163,11 @@ export default function InputForm() {
     }
   }
 
-  const atLimit = quota != null && quota.limit != null && !quota.allowed
+  const atLimit = authUser
+    ? quota != null && quota.limit != null && !quota.allowed
+    : guestAtLimit
   const remaining = quota?.limit != null ? Math.max(quota.limit - quota.used, 0) : null
+  const formDisabled = atLimit || isSubmitting
 
   return (
     <PageWrapper>
@@ -160,6 +176,15 @@ export default function InputForm() {
       <main className="mx-auto max-w-3xl px-6 pb-24 pt-28">
         <h1 className="font-display text-4xl text-on-surface">Tell us your current situation</h1>
         <p className="mt-3 text-on-surface-variant">Two quick inputs and we will map your options.</p>
+
+        {isGuest && (
+          <div className="mt-6">
+            <GuestAuthBanner
+              analysesUsed={guestAnalysesUsed}
+              variant={guestAtLimit ? 'exhausted' : 'default'}
+            />
+          </div>
+        )}
 
         {authUser && quota?.limit != null && (
           <div
@@ -223,7 +248,7 @@ export default function InputForm() {
               className="min-h-[140px] w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 text-on-surface outline-none transition focus:border-primary/40"
               placeholder="I am trying to..."
               required
-              disabled={atLimit || isSubmitting}
+              disabled={formDisabled}
             />
           </label>
 
@@ -235,7 +260,7 @@ export default function InputForm() {
               className="min-h-[120px] w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 text-on-surface outline-none transition focus:border-primary/40"
               placeholder="The main blocker is..."
               required
-              disabled={atLimit || isSubmitting}
+              disabled={formDisabled}
             />
           </label>
 
@@ -245,7 +270,7 @@ export default function InputForm() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full cursor-pointer rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 text-on-surface outline-none transition focus:border-primary/40"
-              disabled={atLimit || isSubmitting}
+              disabled={formDisabled}
             >
               {categories.map((item) => (
                 <option key={item} value={item}>
@@ -265,13 +290,19 @@ export default function InputForm() {
 
           <button
             type="submit"
-            disabled={atLimit || isSubmitting}
+            disabled={formDisabled}
             className={`w-full rounded-xl bg-primary-container px-8 py-4 font-display text-lg font-bold text-on-primary ${btnBase}`}
           >
-            {atLimit ? 'Monthly limit reached' : isSubmitting ? 'Starting analysis…' : 'Find My Next Steps'}
+            {guestAtLimit
+              ? 'Sign in to continue'
+              : atLimit
+                ? 'Monthly limit reached'
+                : isSubmitting
+                  ? 'Starting analysis…'
+                  : 'Find My Next Steps'}
           </button>
 
-          {atLimit && (
+          {atLimit && authUser && (
             <p className="text-center text-xs text-outline-variant">
               Upgrade for unlimited analyses, or wait until your free quota resets.
             </p>

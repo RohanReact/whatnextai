@@ -1,6 +1,7 @@
 import { ArrowRight, Compass, LogIn, Loader2, MailCheck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import PasswordInput from '../components/PasswordInput'
 import { authService } from '../services/auth'
 import { updateProfile } from '../services/api'
 
@@ -11,6 +12,7 @@ export default function SignUpPage() {
   const [lastName,  setLastName]  = useState('')
   const [email,     setEmail]     = useState('')
   const [password,  setPassword]  = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [preferredLanguage, setPreferredLanguage] = useState<'English' | 'हिंदी' | 'বাংলা' | 'தமிழ்'>('English')
   const [stage, setStage] = useState<'Student' | 'Working' | 'Business owner' | 'Job seeking'>('Student')
 
@@ -19,17 +21,25 @@ export default function SignUpPage() {
   const [error,           setError]           = useState<string | null>(null)
   const [emailSent,       setEmailSent]       = useState(false)
 
+  const passwordsMatch = password === confirmPassword
   const canSubmit =
     firstName.trim().length > 0 &&
     lastName.trim().length  > 0 &&
     email.trim().length     > 0 &&
-    password.trim().length  >= 8
+    password.trim().length  >= 8 &&
+    confirmPassword.trim().length >= 8 &&
+    passwordsMatch
 
   const clearError = () => setError(null)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit || isLoading) return
+
+    if (!passwordsMatch) {
+      setError('Passwords do not match. Please check and try again.')
+      return
+    }
 
     setIsLoading(true)
     setError(null)
@@ -105,7 +115,7 @@ export default function SignUpPage() {
             <button
               type="button"
               className="text-primary hover:underline"
-              onClick={() => { setEmailSent(false); setPassword('') }}
+              onClick={() => { setEmailSent(false); setPassword(''); setConfirmPassword('') }}
             >
               try again
             </button>
@@ -216,15 +226,27 @@ export default function SignUpPage() {
 
           <div className="mt-3">
             <label className="mb-1.5 block text-xs font-medium text-outline">Password</label>
-            <input
+            <PasswordInput
               value={password}
-              onChange={(e) => { setPassword(e.target.value); clearError() }}
-              type="password"
+              onChange={(v) => { setPassword(v); clearError() }}
               placeholder="Min. 8 characters"
               autoComplete="new-password"
-              className="w-full rounded-[10px] border border-white/10 bg-surface-container px-3.5 py-2.5 text-sm text-on-surface outline-none transition placeholder:text-outline-variant focus:border-primary/40"
             />
             <p className="mt-1 text-[11px] text-outline-variant">Use at least 8 characters.</p>
+          </div>
+
+          <div className="mt-3">
+            <label className="mb-1.5 block text-xs font-medium text-outline">Confirm password</label>
+            <PasswordInput
+              value={confirmPassword}
+              onChange={(v) => { setConfirmPassword(v); clearError() }}
+              placeholder="Re-enter your password"
+              autoComplete="new-password"
+              aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
+            />
+            {confirmPassword.length > 0 && !passwordsMatch && (
+              <p className="mt-1 text-[11px] text-red-300">Passwords do not match.</p>
+            )}
           </div>
 
           <div className="my-4 h-px bg-white/10" />

@@ -1,6 +1,7 @@
 import { ArrowRight, Compass, LogIn, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import PasswordInput from '../components/PasswordInput'
 import { authService } from '../services/auth'
 
 export default function SignInPage() {
@@ -128,14 +129,14 @@ export default function SignInPage() {
                 Forgot password?
               </button>
             </div>
-            <input
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); clearError() }}
-              type="password"
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              className="mt-1.5 w-full rounded-[10px] border border-white/10 bg-surface-container px-3.5 py-2.5 text-sm text-on-surface outline-none transition placeholder:text-outline-variant focus:border-primary/40"
-            />
+            <div className="mt-1.5">
+              <PasswordInput
+                value={password}
+                onChange={(v) => { setPassword(v); clearError() }}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+            </div>
           </div>
 
           <button
