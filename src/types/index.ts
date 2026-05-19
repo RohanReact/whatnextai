@@ -44,10 +44,12 @@ export interface AppState {
   error: string | null
   hasSeenWelcome: boolean
   hasCompletedOnboarding: boolean
+  guestAnalysesUsed: number
   setCurrentSession: (session: Session) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   setHasSeenWelcome: (seen: boolean) => void
   setHasCompletedOnboarding: (completed: boolean) => void
   addToHistory: (session: Session) => void
+  markGuestAnalysisUsed: () => void
 }

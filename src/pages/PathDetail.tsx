@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import PageWrapper from '../components/layout/PageWrapper'
+import SignInRequiredModal from '../components/SignInRequiredModal'
 import useAppStore from '../store/useAppStore'
 
 function normalizeStepStatus(existing: boolean[] | undefined, stepCount: number): boolean[] {
@@ -12,8 +13,10 @@ function normalizeStepStatus(existing: boolean[] | undefined, stepCount: number)
 export default function PathDetail() {
   const navigate = useNavigate()
   const params = useParams()
+  const authUser = useAppStore((state) => state.user)
   const currentSession = useAppStore((state) => state.currentSession)
   const setCurrentSession = useAppStore((state) => state.setCurrentSession)
+  const [signInModalOpen, setSignInModalOpen] = useState(false)
   const pathId = Number(params.id)
 
   const path = useMemo(
@@ -108,6 +111,7 @@ export default function PathDetail() {
 
   return (
     <PageWrapper>
+      <SignInRequiredModal open={signInModalOpen} onClose={() => setSignInModalOpen(false)} />
       <main className="mx-auto max-w-4xl px-6 pb-24 pt-24">
         <div className="flex items-center gap-3 text-sm text-on-surface-variant">
           <button
@@ -222,7 +226,13 @@ export default function PathDetail() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(`/chat/${path.id}`)}
+            onClick={() => {
+              if (!authUser) {
+                setSignInModalOpen(true)
+                return
+              }
+              navigate(`/chat/${path.id}`)
+            }}
             className="rounded-xl border border-primary-container/30 bg-primary-container/10 px-5 py-3 font-semibold text-primary transition-all hover:border-primary-container/50 hover:bg-primary-container/20 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Open Follow-up Chat

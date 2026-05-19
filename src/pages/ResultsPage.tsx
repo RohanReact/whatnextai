@@ -1,11 +1,24 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/layout/PageWrapper'
+import SignInRequiredModal from '../components/SignInRequiredModal'
 import useAppStore from '../store/useAppStore'
 
 export default function ResultsPage() {
   const navigate = useNavigate()
+  const authUser = useAppStore((state) => state.user)
   const currentSession = useAppStore((state) => state.currentSession)
   const setCurrentSession = useAppStore((state) => state.setCurrentSession)
+  const [signInModalOpen, setSignInModalOpen] = useState(false)
+
+  const openChat = (pathId: number) => {
+    if (!authUser) {
+      setSignInModalOpen(true)
+      return
+    }
+    setCurrentSession({ ...currentSession!, chosenPathId: pathId })
+    navigate(`/chat/${pathId}`)
+  }
 
   if (!currentSession) {
     return (
@@ -19,6 +32,7 @@ export default function ResultsPage() {
 
   return (
     <PageWrapper>
+      <SignInRequiredModal open={signInModalOpen} onClose={() => setSignInModalOpen(false)} />
       <main className="mx-auto max-w-5xl px-6 pb-24 pt-28">
         <header className="text-center">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-primary-container/30 bg-primary-container/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-primary">
@@ -31,8 +45,9 @@ export default function ResultsPage() {
               History
             </button>
             <button
-              onClick={() => navigate(`/chat/${currentSession.chosenPathId ?? currentSession.result.paths[0].id}`)}
-              className="rounded-lg bg-surface-container-high px-4 py-2 text-sm font-semibold text-on-surface-variant"
+              type="button"
+              onClick={() => openChat(currentSession.chosenPathId ?? currentSession.result.paths[0].id)}
+              className="cursor-pointer rounded-lg bg-surface-container-high px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
             >
               Chat for Context
             </button>
@@ -76,11 +91,9 @@ export default function ResultsPage() {
                       Explore This Path
                     </button>
                     <button
-                      onClick={() => {
-                        setCurrentSession({ ...currentSession, chosenPathId: path.id })
-                        navigate(`/chat/${path.id}`)
-                      }}
-                      className="rounded-xl border border-white/15 bg-surface-container-high px-5 py-3 font-semibold text-on-surface-variant"
+                      type="button"
+                      onClick={() => openChat(path.id)}
+                      className="cursor-pointer rounded-xl border border-white/15 bg-surface-container-high px-5 py-3 font-semibold text-on-surface-variant transition-all hover:border-white/25 hover:bg-surface-container-highest hover:text-on-surface"
                     >
                       Open Follow-up Chat
                     </button>

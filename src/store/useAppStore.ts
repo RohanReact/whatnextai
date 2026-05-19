@@ -25,6 +25,7 @@ const useAppStore = create<StoreState>()(
       error:                      null,
       hasSeenWelcome:             false,
       hasCompletedOnboarding:     false,
+      guestAnalysesUsed:          0,
       setCurrentSession:          (session) => set({ currentSession: session }),
       setLoading:                 (loading) => set({ isLoading: loading }),
       setError:                   (error)   => set({ error }),
@@ -32,6 +33,10 @@ const useAppStore = create<StoreState>()(
       setHasCompletedOnboarding:  (completed) => set({ hasCompletedOnboarding: completed }),
       addToHistory:               (session) =>
         set((state) => ({ history: [session, ...state.history] })),
+      markGuestAnalysisUsed:      () =>
+        set((state) => ({
+          guestAnalysesUsed: Math.min(state.guestAnalysesUsed + 1, 99),
+        })),
 
       // ---- Auth state ----
       user:           null,
@@ -56,6 +61,7 @@ const useAppStore = create<StoreState>()(
         history:                state.history,
         hasSeenWelcome:         state.hasSeenWelcome,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
+        guestAnalysesUsed:      state.guestAnalysesUsed,
       }),
     }
   )

@@ -1,6 +1,7 @@
 import { FormEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowUp, Compass, History, Home, Loader2, PanelLeftClose, PanelLeftOpen, Route } from 'lucide-react'
+import GuestAuthBanner from '../components/GuestAuthBanner'
 import { sendChatMessage } from '../services/api'
 import useAppStore from '../store/useAppStore'
 import { ChatMessage } from '../types'
@@ -9,6 +10,7 @@ export default function NavigatorChat() {
   const params = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const authUser = useAppStore((state) => state.user)
   const currentSession = useAppStore((state) => state.currentSession)
   const setCurrentSession = useAppStore((state) => state.setCurrentSession)
   const setError = useAppStore((state) => state.setError)
@@ -43,6 +45,7 @@ export default function NavigatorChat() {
 
   const submitMessage = async (event: FormEvent) => {
     event.preventDefault()
+    if (!authUser) return
     const trimmed = input.trim()
     if (!trimmed || isSending) return
 
@@ -98,6 +101,26 @@ export default function NavigatorChat() {
     } finally {
       setIsSending(false)
     }
+  }
+
+  if (!authUser) {
+    return (
+      <div className="min-h-screen bg-background text-on-background">
+        <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-16">
+          <GuestAuthBanner analysesUsed={1} variant="exhausted" />
+          <p className="mt-4 text-center text-sm text-outline-variant">
+            Please sign in to use follow-up chat and continue your path.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/results')}
+            className="mt-6 cursor-pointer text-sm font-medium text-primary hover:underline"
+          >
+            ← Back to your paths
+          </button>
+        </main>
+      </div>
+    )
   }
 
   return (
