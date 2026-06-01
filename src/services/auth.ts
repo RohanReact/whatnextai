@@ -17,6 +17,8 @@ const toAuthUser = (user: User): AuthUser => ({
   name:  user.user_metadata?.full_name || user.user_metadata?.name || null,
 })
 
+let cachedAccessToken: string | null = null
+
 export const authService = {
   /** Sign up with email + password */
   signUp: async (
@@ -36,12 +38,14 @@ export const authService = {
         },
       },
     })
+    cachedAccessToken = data.session?.access_token || null
     return { user: data.user ? toAuthUser(data.user) : null, session: data.session, error }
   },
 
   /** Sign in with email + password */
   signIn: async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    cachedAccessToken = data.session?.access_token || null
     return { user: data.user ? toAuthUser(data.user) : null, session: data.session, error }
   },
 
@@ -57,12 +61,14 @@ export const authService = {
   /** Sign out */
   signOut: async () => {
     const { error } = await supabase.auth.signOut()
+    cachedAccessToken = null
     return { error }
   },
 
   /** Get the current session (reads from persisted storage) */
   getSession: async (): Promise<{ session: Session | null; user: AuthUser | null }> => {
     const { data: { session } } = await supabase.auth.getSession()
+    cachedAccessToken = session?.access_token || null
     return {
       session,
       user: session?.user ? toAuthUser(session.user) : null,
@@ -71,13 +77,16 @@ export const authService = {
 
   /** Get the JWT access token for API requests */
   getAccessToken: async (): Promise<string | null> => {
+    if (cachedAccessToken) return cachedAccessToken
     const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
+    cachedAccessToken = session?.access_token || null
+    return cachedAccessToken
   },
 
   /** Subscribe to auth state changes */
   onAuthStateChange: (callback: (user: AuthUser | null, session: Session | null) => void) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      cachedAccessToken = session?.access_token || null
       callback(session?.user ? toAuthUser(session.user) : null, session)
     })
     return subscription

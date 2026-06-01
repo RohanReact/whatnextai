@@ -555,7 +555,7 @@ export default function ProfilePage() {
               onClick={() => navigate('/pricing')}
               className={`w-full py-3 rounded-[10px] text-[13px] font-semibold text-on-primary font-sans bg-linear-to-br from-primary-container to-primary hover:opacity-95 hover:shadow-lg hover:shadow-primary-container/20 flex items-center justify-center gap-2 ${btnBase}`}
             >
-              ⚡ Upgrade to Navigator — ₹299/month
+              Upgrade to Navigator — pricing soon
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}

@@ -72,6 +72,21 @@ export async function chatUsageLimiter(
   if (!sessionId) return next() // no session ID yet — first message
 
   try {
+    const { data: ownedSession, error: sessionErr } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (sessionErr || !ownedSession) {
+      return res.status(403).json({
+        success: false,
+        error: 'FORBIDDEN_SESSION',
+        message: 'You do not have access to this session.',
+      })
+    }
+
     const { count } = await supabase
       .from('chat_messages')
       .select('id', { count: 'exact', head: true })

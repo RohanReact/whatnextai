@@ -13,6 +13,7 @@ import PricingPage from './pages/PricingPage'
 import ProfilePage from './pages/ProfilePage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
+import SessionDetailPage from './pages/SessionDetailPage'
 import RouteErrorBoundary from './pages/RouteErrorBoundary'
 
 const router = createBrowserRouter([
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { path: '/path/:id', element: <PathDetail /> },
       { path: '/chat/:id', element: <NavigatorChat /> },
       { path: '/history', element: <HistoryPage /> },
+      { path: '/sessions/:id', element: <SessionDetailPage /> },
       { path: '/explore', element: <ExplorePage /> },
       { path: '/pricing', element: <PricingPage /> },
       { path: '/profile', element: <ProfilePage /> },
