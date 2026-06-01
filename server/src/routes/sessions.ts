@@ -110,6 +110,7 @@ router.patch('/:id/status', requireAuth, async (req: Request, res: Response) => 
 // PATCH /sessions/:id/paths/:pathId/steps/:stepIndex — toggle step completion
 router.patch('/:id/paths/:pathId/steps/:stepIndex', requireAuth, async (req: Request, res: Response) => {
   const userId     = req.user!.id
+  const sessionId  = req.params.id as string
   const pathId    = req.params.pathId    as string
   const stepIndex = req.params.stepIndex as string
   const stepIdx   = parseInt(stepIndex, 10)
@@ -117,6 +118,28 @@ router.patch('/:id/paths/:pathId/steps/:stepIndex', requireAuth, async (req: Req
 
   if (isNaN(stepIdx)) {
     return res.status(400).json({ success: false, error: 'Invalid step index.' })
+  }
+
+  const { data: ownedSession, error: sessionErr } = await supabase
+    .from('sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single()
+
+  if (sessionErr || !ownedSession) {
+    return res.status(404).json({ success: false, error: 'Session not found.' })
+  }
+
+  const { data: ownedPath, error: pathErr } = await supabase
+    .from('paths')
+    .select('id')
+    .eq('id', pathId)
+    .eq('session_id', sessionId)
+    .single()
+
+  if (pathErr || !ownedPath) {
+    return res.status(404).json({ success: false, error: 'Path not found for this session.' })
   }
 
   const completedAt = completed ? new Date().toISOString() : null

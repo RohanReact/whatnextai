@@ -7,6 +7,9 @@ export function errorHandler(
   _next: NextFunction,
 ) {
   console.error('[ERROR]', err)
-  const message = err instanceof Error ? err.message : 'Internal server error'
+  const isProd = process.env.NODE_ENV === 'production'
+  const message = isProd
+    ? 'Internal server error'
+    : (err instanceof Error ? err.message : 'Internal server error')
   res.status(500).json({ success: false, error: message })
 }

@@ -11,8 +11,8 @@ type PlanId = 'explorer' | 'navigator' | 'guide'
 type Plan = {
   id: PlanId
   name: string
-  price: string
-  sub: string
+  priceLabel: string
+  priceHint: string
   featured?: boolean
   badge?: string
   features: Array<{ text: string; included: boolean }>
@@ -35,8 +35,8 @@ export default function PricingPage() {
       {
         id: 'explorer',
         name: 'Explorer',
-        price: 'Free',
-        sub: 'Forever free',
+        priceLabel: 'Available now',
+        priceHint: 'Starter access',
         features: [
           { text: '3 analyses per month', included: true },
           { text: 'Basic path output', included: true },
@@ -49,8 +49,8 @@ export default function PricingPage() {
       {
         id: 'navigator',
         name: 'Navigator',
-        price: '₹299/mo',
-        sub: '~$3.5 USD',
+        priceLabel: 'Launching soon',
+        priceHint: 'Pricing revealed at launch',
         featured: true,
         badge: 'Popular',
         features: [
@@ -65,8 +65,8 @@ export default function PricingPage() {
       {
         id: 'guide',
         name: 'Guide',
-        price: '₹799/mo',
-        sub: 'For coaches and teams',
+        priceLabel: 'Launching soon',
+        priceHint: 'Pricing revealed at launch',
         features: [
           { text: 'Everything in Navigator', included: true },
           { text: '5 team members', included: true },
@@ -145,8 +145,10 @@ export default function PricingPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-lg font-semibold text-slate-100 font-display tracking-tight">{plan.name}</p>
-                    <p className="mt-2 text-3xl font-bold text-slate-50">{plan.price}</p>
-                    <p className="mt-1 text-sm text-slate-400">{plan.sub}</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-50 blur-[2px] select-none" aria-label="Price hidden for now">
+                      {plan.priceLabel}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">{plan.priceHint}</p>
                   </div>
                   {plan.badge && (
                     <span className="text-xs font-semibold px-3 py-1 rounded-full bg-primary-container/15 text-primary-container border border-primary-container/25">

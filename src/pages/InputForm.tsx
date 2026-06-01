@@ -112,8 +112,9 @@ export default function InputForm() {
 
     try {
       const result = await analyzeInput(situation, blockage, category, wantsDownloads)
+      const resolvedSessionId = authUser && result.sessionId ? result.sessionId : createSessionId()
       const session: Session = {
-        id: createSessionId(),
+        id: resolvedSessionId,
         createdAt: new Date(),
         category,
         situation,

@@ -6,6 +6,7 @@ import { AnalysisResult, ChatMessage } from '../types'
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const api = axios.create({ baseURL: BASE_URL })
+const inFlightRequests = new Map<string, Promise<unknown>>()
 
 // -- Attach JWT on every request if the user is signed in --
 api.interceptors.request.use(async (config) => {
@@ -15,6 +16,17 @@ api.interceptors.request.use(async (config) => {
   }
   return config
 })
+
+const withInFlightDedup = <T>(key: string, factory: () => Promise<T>): Promise<T> => {
+  const active = inFlightRequests.get(key)
+  if (active) return active as Promise<T>
+
+  const request = factory().finally(() => {
+    inFlightRequests.delete(key)
+  })
+  inFlightRequests.set(key, request)
+  return request
+}
 
 // ---- Analysis ----
 
@@ -44,16 +56,20 @@ export const sendChatMessage = async (
 // ---- Sessions ----
 
 export const fetchSessions = async () => {
-  const response = await api.get('/sessions')
-  return response.data.data as Array<{
-    id: string; category: string; situation: string
-    summary: string; status: string; created_at: string
-  }>
+  return withInFlightDedup('GET:/sessions', async () => {
+    const response = await api.get('/sessions')
+    return response.data.data as Array<{
+      id: string; category: string; situation: string
+      summary: string; status: string; created_at: string
+    }>
+  })
 }
 
 export const fetchSession = async (id: string) => {
-  const response = await api.get(`/sessions/${id}`)
-  return response.data.data
+  return withInFlightDedup(`GET:/sessions/${id}`, async () => {
+    const response = await api.get(`/sessions/${id}`)
+    return response.data.data
+  })
 }
 
 export const updateSessionStatus = async (id: string, status: 'in-progress' | 'completed' | 'abandoned') => {
@@ -76,8 +92,10 @@ export const updateStepProgress = async (
 // ---- User / Profile ----
 
 export const fetchMe = async () => {
-  const response = await api.get('/users/me')
-  return response.data.data
+  return withInFlightDedup('GET:/users/me', async () => {
+    const response = await api.get('/users/me')
+    return response.data.data
+  })
 }
 
 export interface AnalysisQuota {
@@ -90,8 +108,10 @@ export interface AnalysisQuota {
 }
 
 export const fetchAnalysisQuota = async (): Promise<AnalysisQuota> => {
-  const response = await api.get('/users/me/quota')
-  return response.data.data as AnalysisQuota
+  return withInFlightDedup('GET:/users/me/quota', async () => {
+    const response = await api.get('/users/me/quota')
+    return response.data.data as AnalysisQuota
+  })
 }
 
 export const updateProfile = async (updates: {

@@ -53,6 +53,7 @@ router.post('/', chatRateLimit, optionalAuth, chatUsageLimiter, async (req: Requ
 
   const cleanMessage    = message.trim()
   const cleanChosenPath = (chosenPath as string).trim()
+  const cleanSessionId  = typeof sessionId === 'string' ? sessionId.trim() : ''
   // Cap history to last N messages to avoid prompt injection / token overflow
   const safeHistory = (history as Array<{ role: string; content: string }>)
     .slice(-MAX_HISTORY_ITEMS)
@@ -65,6 +66,40 @@ router.post('/', chatRateLimit, optionalAuth, chatUsageLimiter, async (req: Requ
   }
 
   try {
+    if (req.user && cleanSessionId) {
+      const { data: ownedSession, error: sessionErr } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('id', cleanSessionId)
+        .eq('user_id', req.user.id)
+        .single()
+
+      if (sessionErr || !ownedSession) {
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN_SESSION',
+          message: 'You do not have access to this session.',
+        })
+      }
+
+      if (typeof pathId === 'string' && pathId.trim()) {
+        const { data: ownedPath, error: pathErr } = await supabase
+          .from('paths')
+          .select('id')
+          .eq('id', pathId.trim())
+          .eq('session_id', cleanSessionId)
+          .single()
+
+        if (pathErr || !ownedPath) {
+          return res.status(403).json({
+            success: false,
+            error: 'FORBIDDEN_PATH',
+            message: 'You do not have access to this path.',
+          })
+        }
+      }
+    }
+
     const candidates = listCandidateProviders()
     let reply = ''
     let usedProvider = ''
@@ -88,10 +123,10 @@ router.post('/', chatRateLimit, optionalAuth, chatUsageLimiter, async (req: Requ
     if (!reply) throw lastError || new Error('Chat failed')
 
     // -- Persist messages to DB if user is authenticated and sessionId is provided --
-    if (req.user && typeof sessionId === 'string' && sessionId) {
+    if (req.user && cleanSessionId) {
       const msgRows = [
-        { session_id: sessionId, path_id: typeof pathId === 'string' ? pathId : null, role: 'user' as const,      content: cleanMessage },
-        { session_id: sessionId, path_id: typeof pathId === 'string' ? pathId : null, role: 'assistant' as const, content: reply        },
+        { session_id: cleanSessionId, path_id: typeof pathId === 'string' ? pathId : null, role: 'user' as const,      content: cleanMessage },
+        { session_id: cleanSessionId, path_id: typeof pathId === 'string' ? pathId : null, role: 'assistant' as const, content: reply        },
       ]
       const { error: msgErr } = await supabase.from('chat_messages').insert(msgRows)
       if (msgErr) console.error('[DB] chat_messages insert failed:', msgErr.message)
