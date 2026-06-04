@@ -10,6 +10,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
     "@google/genai": "^1.29.0",
+    "@sentry/node": "^10.55.0",
     "@supabase/supabase-js": "^2.105.4",
     "compression": "^1.8.1",
     "cors": "^2.8.5",

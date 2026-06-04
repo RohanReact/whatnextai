@@ -17,6 +17,7 @@ npm install
 ```
 
 Optional: copy [.env.example](.env.example) to `.env` or `.env.local` if you need variables exposed to the Vite build (see file comments).
+If you want error tracking in production, set `VITE_SENTRY_DSN` in the frontend env.
 
 ### 2. API server
 
@@ -27,6 +28,7 @@ npm install
 ```
 
 Copy [server/.env.example](server/.env.example) to `server/.env` and set at least one provider API key (`GEMINI_API_KEY` or `GOOGLE_API_KEY`, and/or `ANTHROPIC_API_KEY`). See `server/.env.example` for `AI_PROVIDER` and model options.
+For backend error tracking, set `SENTRY_DSN` in `server/.env`.
 
 The API listens on **http://localhost:3001** and allows CORS from the Vite dev origin **http://localhost:5173**.
 

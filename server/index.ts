@@ -22,9 +22,12 @@ import {
   hasValidGeminiKey,
   getGeminiModels,
 } from './src/services/ai.js'
+import { initSentry, setupSentryExpressErrorHandler } from './src/services/sentry.js'
 
 const app  = express()
 const port = Number(process.env.PORT) || 3001
+
+initSentry()
 
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
@@ -68,6 +71,7 @@ app.use('/users',    usersRouter)
 app.use('/waitlist', waitlistRouter)
 
 // ---- Centralized error handler (must be last) ----
+setupSentryExpressErrorHandler(app)
 app.use(errorHandler)
 
 app.listen(port, () => console.log(`WhatNext server running on :${port}`))

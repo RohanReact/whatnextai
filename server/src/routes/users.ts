@@ -3,6 +3,7 @@ import type { Request, Response } from 'express'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { supabase }    from '../services/supabase.js'
 import { getAnalysisQuota } from '../services/usageQuota.js'
+import { captureServerException } from '../services/sentry.js'
 import type { SubscriptionTier } from '../types/index.js'
 
 const router = Router()
@@ -20,6 +21,7 @@ router.get('/me/quota', requireAuth, async (req: Request, res: Response) => {
     return res.json({ success: true, data: quota })
   } catch (err) {
     console.error('[users] quota check failed:', err)
+    captureServerException(err, { area: 'users_quota_route', route: '/users/me/quota', status: 500 })
     return res.status(500).json({ success: false, error: 'Could not check usage quota.' })
   }
 })

@@ -15,6 +15,7 @@ import {
   parseErrorPayload,
   isFallbackError,
 } from '../services/ai.js'
+import { captureServerException } from '../services/sentry.js'
 
 const router = Router()
 
@@ -136,6 +137,7 @@ router.post('/', chatRateLimit, optionalAuth, chatUsageLimiter, async (req: Requ
 
   } catch (err) {
     console.error('[CHAT_ERROR]', err)
+    captureServerException(err, { area: 'chat_route', route: '/chat', status: 500 })
     const rawMsg   = getErrorMessage(err, 'Chat failed')
     const parsed   = parseErrorPayload(rawMsg)
     const cleanMsg = parsed?.message || rawMsg
