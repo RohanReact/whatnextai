@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { AxiosError } from 'axios'
 import { authService }   from './auth'
 import { AnalysisResult, ChatMessage } from '../types'
+import { captureFrontendException } from '../lib/sentry'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -16,6 +17,35 @@ api.interceptors.request.use(async (config) => {
   }
   return config
 })
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ error?: string; message?: string }>) => {
+    const status = error.response?.status
+    const endpoint = error.config?.url || 'unknown'
+    const code = error.response?.data?.error || ''
+
+    // Keep free-tier signal quality high: only unexpected/network/server failures.
+    if (!status || status >= 500) {
+      captureFrontendException(error, {
+        area: 'api_response',
+        endpoint,
+        status,
+      })
+    } else if (status >= 400 && !['LIMIT_REACHED', 'FORBIDDEN_SESSION', 'FORBIDDEN_PATH'].includes(code)) {
+      if (status >= 401 && status <= 403) {
+        // Auth/session issues can be useful in production debugging.
+        captureFrontendException(error, {
+          area: 'api_auth',
+          endpoint,
+          status,
+        })
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
 
 const withInFlightDedup = <T>(key: string, factory: () => Promise<T>): Promise<T> => {
   const active = inFlightRequests.get(key)

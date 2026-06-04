@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import { captureServerException } from '../services/sentry.js'
 
 export function errorHandler(
   err: unknown,
@@ -7,6 +8,7 @@ export function errorHandler(
   _next: NextFunction,
 ) {
   console.error('[ERROR]', err)
+  captureServerException(err, { area: 'express_error_handler', status: 500 })
   const isProd = process.env.NODE_ENV === 'production'
   const message = isProd
     ? 'Internal server error'

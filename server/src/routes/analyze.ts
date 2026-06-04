@@ -15,6 +15,7 @@ import {
   parseErrorPayload,
   isFallbackError,
 } from '../services/ai.js'
+import { captureServerException } from '../services/sentry.js'
 import type { AiAnalysisResult, AiPath } from '../types/index.js'
 
 const router = Router()
@@ -151,6 +152,7 @@ router.post('/', analyzeRateLimit, optionalAuth, analyzeUsageLimiter, async (req
 
   } catch (err) {
     console.error('[ANALYZE_ERROR]', err)
+    captureServerException(err, { area: 'analyze_route', route: '/analyze', status: 500 })
     const rawMsg   = getErrorMessage(err, 'Analysis failed')
     const parsed   = parseErrorPayload(rawMsg)
     const cleanMsg = parsed?.message || rawMsg

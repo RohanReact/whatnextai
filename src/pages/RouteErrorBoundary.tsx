@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { isRouteErrorResponse, useNavigate, useRouteError } from 'react-router-dom'
+import { captureFrontendException } from '../lib/sentry'
 
 export default function RouteErrorBoundary() {
   const error = useRouteError()
@@ -13,6 +15,19 @@ export default function RouteErrorBoundary() {
   } else if (error instanceof Error) {
     message = error.message
   }
+
+  useEffect(() => {
+    if (isRouteErrorResponse(error)) {
+      captureFrontendException(new Error(`Route error: ${error.status} ${error.statusText || 'Error'}`), {
+        area: 'route_boundary',
+        status: error.status,
+      })
+      return
+    }
+    if (error instanceof Error) {
+      captureFrontendException(error, { area: 'route_boundary' })
+    }
+  }, [error])
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6 bg-surface-container-lowest">
