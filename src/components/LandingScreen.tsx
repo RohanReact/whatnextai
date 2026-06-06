@@ -149,15 +149,13 @@ export function LandingScreen({ onGetUnstuck }: { onGetUnstuck: () => void }) {
             Your Personal Navigation Intelligence
           </motion.div>
 
-          {/* Headline */}
+          {/* Headline — text-pretty balances lines; accent phrase stays on one line */}
           <motion.h1
             variants={fadeUp}
-            className="font-display text-[clamp(38px,5.5vw,64px)] font-bold leading-[1.08] tracking-[-0.035em] text-on-surface mb-5"
+            className="mx-auto mb-5 max-w-[16em] font-display text-[clamp(32px,5.5vw,64px)] font-bold leading-[1.12] tracking-tight text-pretty text-on-surface sm:max-w-[20em]"
           >
-            Stuck? Tell us what's going on —
-            <br />
-            we'll show you{' '}
-            <em className="not-italic text-primary-container">what to do next.</em>
+            Stuck? Tell us what&apos;s going on — we&apos;ll show you{' '}
+            <span className="whitespace-nowrap text-primary-container">what to do next.</span>
           </motion.h1>
 
           {/* Subheading */}
