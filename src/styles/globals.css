@@ -121,3 +121,8 @@ body {
 .hero-gradient {
   background: radial-gradient(circle at 50% 50%, rgba(244, 162, 97, 0.08) 0%, rgba(5, 11, 20, 1) 70%);
 }
+
+/* Smooth section transitions for landing page scroll reveals */
+[data-scroll-reveal] {
+  will-change: transform, opacity;
+}
