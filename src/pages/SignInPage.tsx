@@ -1,19 +1,46 @@
-import { ArrowRight, Compass, LogIn, Loader2 } from 'lucide-react'
+import { ArrowRight, LogIn, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
+import AuthBrandMark from '../components/AuthBrandMark'
 import PasswordInput from '../components/PasswordInput'
 import { authService } from '../services/auth'
 
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 18 18" fill="none" aria-hidden className="size-[18px] shrink-0">
+      <path
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+        fill="#4285F4"
+      />
+      <path
+        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+        fill="#34A853"
+      />
+      <path
+        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+        fill="#EA4335"
+      />
+    </svg>
+  )
+}
+
+const inputCls =
+  'w-full rounded-xl border border-white/[0.08] bg-surface-container px-3.5 py-2.5 text-sm text-on-surface outline-none transition-colors placeholder:text-outline-variant focus:border-primary-container/40'
+
 export default function SignInPage() {
   const navigate = useNavigate()
-  const [email,    setEmail]    = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading,    setIsLoading]    = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const canSubmit = email.trim().length > 0 && password.trim().length > 0
-
   const clearError = () => setError(null)
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -27,7 +54,6 @@ export default function SignInPage() {
 
     if (authError) {
       setIsLoading(false)
-      // Supabase returns "Invalid login credentials" — surface a friendlier message
       const msg = authError.message.toLowerCase()
       if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('not found')) {
         setError('Incorrect email or password. Please try again.')
@@ -39,7 +65,6 @@ export default function SignInPage() {
       return
     }
 
-    // Auth state change in App.tsx handles updating the store
     navigate('/')
   }
 
@@ -51,98 +76,97 @@ export default function SignInPage() {
       setIsGoogleLoading(false)
       setError(authError.message || 'Google sign-in failed. Please try again.')
     }
-    // On success, Supabase redirects the browser — no need to navigate manually
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface-container-lowest px-6 py-16">
-      <div className="pointer-events-none absolute -top-52 left-1/2 size-[600px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(255,196,153,.06)_0%,transparent_70%)]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface-container-lowest px-5 py-14">
+      <div className="pointer-events-none absolute -top-52 left-1/2 -translate-x-1/2 w-[700px] h-[600px] rounded-full bg-[radial-gradient(ellipse,rgba(244,162,97,0.06)_0%,transparent_65%)]" />
 
-      <main className="relative z-10 w-full max-w-[420px] rounded-[20px] border border-white/10 bg-surface px-10 py-9 shadow-[0_0_24px_rgba(255,196,153,.08)] sm:px-10 sm:py-10">
-        <div className="mb-8 flex flex-col items-center">
-          <div className="mb-2 flex size-12 items-center justify-center rounded-[14px] bg-linear-to-br from-primary-container to-primary shadow-[0_0_24px_rgba(255,196,153,.2)]">
-            <Compass className="size-6 text-on-primary" strokeWidth={1.9} />
-          </div>
-          <span className="font-display text-xl font-bold tracking-tight text-primary">WhatNext</span>
-        </div>
+      <motion.main
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+        className="relative z-10 w-full max-w-[480px] rounded-[20px] border border-white/[0.1] bg-surface-container-low px-8 py-10 sm:px-10"
+      >
+        <AuthBrandMark />
 
-        <h1 className="font-display text-center text-[22px] font-semibold text-on-surface">Welcome back</h1>
-        <p className="mt-1 text-center text-[13px] leading-relaxed text-outline">
-          Sign in to access your paths,
-          <br />
-          history and progress.
+        <h1 className="font-display text-center text-[22px] font-semibold text-on-surface mb-1.5">
+          Welcome back
+        </h1>
+        <p className="text-center text-[14px] text-outline-variant font-light leading-relaxed mb-7">
+          Sign in to access your paths, history and progress.
         </p>
 
-        {/* Google */}
         <button
           type="button"
           disabled={isGoogleLoading || isLoading}
           onClick={onGoogleSignIn}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-surface-container px-4 py-3 text-sm font-medium text-on-surface transition hover:border-primary/30 hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-white/[0.1] bg-surface-container px-4 py-3 text-sm font-medium text-on-surface transition-all hover:bg-surface-container-high hover:border-white/[0.15] disabled:opacity-60 disabled:cursor-not-allowed mb-5"
         >
-          {isGoogleLoading ? (
-            <Loader2 className="size-[18px] animate-spin" />
-          ) : (
-            <svg viewBox="0 0 24 24" aria-hidden className="size-[18px] shrink-0">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-          )}
+          {isGoogleLoading ? <Loader2 className="size-[18px] animate-spin" /> : <GoogleIcon />}
           Continue with Google
         </button>
 
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs text-outline-variant">or sign in with email</span>
-          <div className="h-px flex-1 bg-white/10" />
+        <div className="flex items-center gap-3 mb-5">
+          <div className="h-px flex-1 bg-white/[0.06]" />
+          <span className="text-[12px] text-outline-variant whitespace-nowrap">
+            or sign in with email
+          </span>
+          <div className="h-px flex-1 bg-white/[0.06]" />
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/[0.08] px-3.5 py-2.5 text-xs text-red-300 leading-relaxed">
             {error}
           </div>
         )}
 
-        <form onSubmit={onSubmit}>
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs font-medium text-outline">Email address</label>
+        <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
+          <div>
+            <label className="block text-[12px] font-medium text-outline mb-1.5">
+              Email address
+            </label>
             <input
               value={email}
-              onChange={(e) => { setEmail(e.target.value); clearError() }}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                clearError()
+              }}
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
-              className="w-full rounded-[10px] border border-white/10 bg-surface-container px-3.5 py-2.5 text-sm text-on-surface outline-none transition placeholder:text-outline-variant focus:border-primary/40"
+              className={inputCls}
             />
           </div>
 
-          <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-medium text-outline">Password</label>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-[12px] font-medium text-outline">Password</label>
               <button
                 type="button"
-                className="text-xs text-outline transition hover:text-primary"
-                onClick={() => {/* password reset flow — future */}}
+                className="text-xs text-outline-variant transition hover:text-primary-container"
+                onClick={() => {
+                  /* password reset flow — future */
+                }}
               >
                 Forgot password?
               </button>
             </div>
-            <div className="mt-1.5">
-              <PasswordInput
-                value={password}
-                onChange={(v) => { setPassword(v); clearError() }}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-              />
-            </div>
+            <PasswordInput
+              value={password}
+              onChange={(v) => {
+                setPassword(v)
+                clearError()
+              }}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+            />
           </div>
 
           <button
             type="submit"
             disabled={!canSubmit || isLoading}
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-on-primary transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-1 flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3.5 text-[15px] font-semibold text-[#1a0d06] shadow-[0_8px_24px_rgba(244,162,97,0.22)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(244,162,97,0.3)] disabled:cursor-not-allowed disabled:opacity-50 disabled:translate-y-0 active:scale-[0.98]"
           >
             {isLoading ? (
               <>
@@ -158,23 +182,24 @@ export default function SignInPage() {
           </button>
         </form>
 
-        <p className="mt-5 text-center text-[13px] text-outline-variant">
+        <p className="mt-4 text-center text-[13px] text-outline-variant">
           Don&apos;t have an account?{' '}
-          <Link to="/sign-up" className="text-primary hover:underline">Create one free →</Link>
+          <Link to="/sign-up" className="text-primary-container hover:underline font-medium">
+            Create one free →
+          </Link>
         </p>
 
-        <div className="mt-6 border-t border-white/10 pt-5 text-center">
-          <p className="text-[13px] text-outline-variant">Don&apos;t want to sign up right now?</p>
+        <div className="mt-5 border-t border-white/[0.06] pt-4 text-center">
           <button
             type="button"
-            className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-[13px] text-outline transition hover:border-outline-variant hover:text-on-surface"
+            className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-transparent px-5 py-2.5 text-[13px] text-outline-variant transition-all hover:border-white/[0.15] hover:text-on-surface"
             onClick={() => navigate('/')}
           >
             <LogIn className="size-3.5" aria-hidden />
             Continue as guest — try it free
           </button>
         </div>
-      </main>
+      </motion.main>
     </div>
   )
 }
