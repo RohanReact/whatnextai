@@ -2,6 +2,7 @@ import { ArrowRight, LogIn, Loader2, MailCheck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
+import AuthBrandMark from '../components/AuthBrandMark'
 import PasswordInput from '../components/PasswordInput'
 import { authService } from '../services/auth'
 import { updateProfile } from '../services/api'
@@ -214,15 +215,7 @@ export default function SignUpPage() {
         transition={{ duration: 0.45 }}
         className="relative z-10 w-full max-w-[480px] rounded-[20px] border border-white/[0.1] bg-surface-container-low px-8 py-10 sm:px-10"
       >
-        {/* Brand mark */}
-        <div className="mb-8 flex flex-col items-center">
-          <div className="mb-2.5 w-[52px] h-[52px] rounded-[14px] bg-primary-container/10 border border-primary-container/25 flex items-center justify-center text-[26px] select-none">
-            🧭
-          </div>
-          <span className="font-display text-[19px] font-bold tracking-tight text-primary-container">
-            WhatNext
-          </span>
-        </div>
+        <AuthBrandMark />
 
         <h1 className="font-display text-center text-[22px] font-semibold text-on-surface mb-1.5">
           Create your account
