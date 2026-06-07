@@ -13,6 +13,7 @@ import PricingPage from './pages/PricingPage'
 import ProfilePage from './pages/ProfilePage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import SessionDetailPage from './pages/SessionDetailPage'
 import RouteErrorBoundary from './pages/RouteErrorBoundary'
 
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: '/welcome', element: <WelcomeSplash /> },
       { path: '/sign-in', element: <SignInPage /> },
       { path: '/sign-up', element: <SignUpPage /> },
+      { path: '/auth/callback', element: <AuthCallbackPage /> },
       { path: '/input', element: <InputForm /> },
       { path: '/loading', element: <LoadingScreen /> },
       { path: '/results', element: <ResultsPage /> },

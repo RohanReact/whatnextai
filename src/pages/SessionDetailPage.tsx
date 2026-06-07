@@ -50,10 +50,12 @@ export default function SessionDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const authUser = useAppStore((state) => state.user)
+  const isAuthLoading = useAppStore((state) => state.isAuthLoading)
   const setCurrentSession = useAppStore((state) => state.setCurrentSession)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isAuthLoading) return
     if (!authUser) {
       navigate('/sign-in', { replace: true })
       return
@@ -140,7 +142,7 @@ export default function SessionDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [authUser, id, navigate, setCurrentSession])
+  }, [authUser, isAuthLoading, id, navigate, setCurrentSession])
 
   return (
     <PageWrapper>

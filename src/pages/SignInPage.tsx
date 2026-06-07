@@ -1,10 +1,12 @@
 import { ArrowRight, LogIn, Loader2 } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import AuthBrandMark from '../components/AuthBrandMark'
 import PasswordInput from '../components/PasswordInput'
 import { authService } from '../services/auth'
+import useAppStore from '../store/useAppStore'
+import { normalizeEmail, validateEmail } from '../utils/email'
 
 function GoogleIcon() {
   return (
@@ -34,23 +36,50 @@ const inputCls =
 
 export default function SignInPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { setUser, setAccessToken } = useAppStore()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
 
-  const canSubmit = email.trim().length > 0 && password.trim().length > 0
-  const clearError = () => setError(null)
+  const emailCheck = validateEmail(email)
+  const canSubmit = emailCheck.valid && password.trim().length > 0
+
+  const clearError = () => {
+    setError(null)
+    setEmailError(null)
+  }
+
+  useEffect(() => {
+    const authError = searchParams.get('auth_error')
+    if (authError) {
+      setError(decodeURIComponent(authError))
+      searchParams.delete('auth_error')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit || isLoading) return
 
+    const validation = validateEmail(email)
+    if (!validation.valid) {
+      setEmailError(validation.message || 'Please enter a valid email address.')
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
-    const { error: authError } = await authService.signIn(email.trim(), password)
+    const { user, session, error: authError } = await authService.signIn(
+      normalizeEmail(email),
+      password
+    )
 
     if (authError) {
       setIsLoading(false)
@@ -65,6 +94,12 @@ export default function SignInPage() {
       return
     }
 
+    if (user && session) {
+      setUser(user)
+      setAccessToken(session.access_token)
+    }
+
+    setIsLoading(false)
     navigate('/')
   }
 
@@ -132,26 +167,28 @@ export default function SignInPage() {
                 setEmail(e.target.value)
                 clearError()
               }}
+              onBlur={() => {
+                if (email.trim()) {
+                  const result = validateEmail(email)
+                  setEmailError(result.valid ? null : result.message || null)
+                }
+              }}
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
+              inputMode="email"
+              aria-invalid={email.length > 0 && !emailCheck.valid}
               className={inputCls}
             />
+            {(emailError || (email.length > 0 && !emailCheck.valid)) && (
+              <p className="mt-1 text-[11px] text-red-300">
+                {emailError || emailCheck.message}
+              </p>
+            )}
           </div>
 
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="block text-[12px] font-medium text-outline">Password</label>
-              <button
-                type="button"
-                className="text-xs text-outline-variant transition hover:text-primary-container"
-                onClick={() => {
-                  /* password reset flow — future */
-                }}
-              >
-                Forgot password?
-              </button>
-            </div>
+            <label className="block text-[12px] font-medium text-outline mb-1.5">Password</label>
             <PasswordInput
               value={password}
               onChange={(v) => {

@@ -171,7 +171,7 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const { user: authUser, clearAuth } = useAppStore()
+  const { user: authUser, clearAuth, isAuthLoading } = useAppStore()
 
   const [data,       setData]      = useState<ProfileData | null>(null)
   const [isLoading,  setIsLoading] = useState(true)
@@ -190,15 +190,17 @@ export default function ProfilePage() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
-  // Redirect to sign-in if not logged in
+  // Redirect to sign-in if not logged in (after auth has finished hydrating)
   useEffect(() => {
-    if (!authUser && !isLoading) {
+    if (!isAuthLoading && !authUser) {
       navigate('/sign-in')
     }
-  }, [authUser, isLoading, navigate])
+  }, [authUser, isAuthLoading, navigate])
 
-  // Load profile on mount
+  // Load profile once we know the user is signed in
   useEffect(() => {
+    if (isAuthLoading || !authUser) return
+
     let cancelled = false
     setIsLoading(true)
     setError(null)
@@ -219,7 +221,7 @@ export default function ProfilePage() {
       })
 
     return () => { cancelled = true }
-  }, [])
+  }, [authUser, isAuthLoading])
 
   const reloadProfile = async () => {
     const profileData = await fetchMe()

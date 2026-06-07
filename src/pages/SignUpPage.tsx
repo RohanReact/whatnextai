@@ -6,6 +6,8 @@ import AuthBrandMark from '../components/AuthBrandMark'
 import PasswordInput from '../components/PasswordInput'
 import { authService } from '../services/auth'
 import { updateProfile } from '../services/api'
+import useAppStore from '../store/useAppStore'
+import { normalizeEmail, validateEmail } from '../utils/email'
 
 // ─── Google SVG icon ──────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -58,6 +60,7 @@ const inputCls =
 
 export default function SignUpPage() {
   const navigate = useNavigate()
+  const { setUser, setAccessToken } = useAppStore()
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -75,21 +78,32 @@ export default function SignUpPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
 
+  const emailCheck = validateEmail(email)
   const passwordsMatch = password === confirmPassword
   const canSubmit =
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
-    email.trim().length > 0 &&
+    emailCheck.valid &&
     password.trim().length >= 8 &&
     confirmPassword.trim().length >= 8 &&
     passwordsMatch
 
-  const clearError = () => setError(null)
+  const clearError = () => {
+    setError(null)
+    setEmailError(null)
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit || isLoading) return
+
+    const validation = validateEmail(email)
+    if (!validation.valid) {
+      setEmailError(validation.message || 'Please enter a valid email address.')
+      return
+    }
 
     if (!passwordsMatch) {
       setError('Passwords do not match. Please check and try again.')
@@ -98,11 +112,13 @@ export default function SignUpPage() {
 
     setIsLoading(true)
     setError(null)
+    setEmailError(null)
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`
+    const cleanEmail = normalizeEmail(email)
 
-    const { session, error: authError } = await authService.signUp(
-      email.trim(),
+    const { user, session, error: authError } = await authService.signUp(
+      cleanEmail,
       password,
       fullName,
       { lifeStage: stage, preferredLanguage }
@@ -131,12 +147,18 @@ export default function SignUpPage() {
       return
     }
 
+    if (user) {
+      setUser(user)
+      setAccessToken(session.access_token)
+    }
+
     try {
       await updateProfile({ lifeStage: stage, preferredLanguage })
     } catch {
-      // Non-critical
+      // Non-critical — profile metadata can be updated later
     }
 
+    setIsLoading(false)
     navigate('/')
   }
 
@@ -150,7 +172,6 @@ export default function SignUpPage() {
     }
   }
 
-  // ─── Email confirmation state ────────────────────────────────────────────
   if (emailSent) {
     return (
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface-container-lowest px-5 py-16">
@@ -173,10 +194,10 @@ export default function SignUpPage() {
           <p className="text-sm text-outline-variant leading-relaxed mb-4">
             We sent a confirmation link to{' '}
             <span className="text-on-surface font-medium">{email}</span>.
-            Click it to activate your account and you're all set.
+            Click it to activate your account and you&apos;re all set.
           </p>
           <p className="text-xs text-outline-variant mb-6">
-            Didn't get it? Check your spam folder or{' '}
+            Didn&apos;t get it? Check your spam folder or{' '}
             <button
               type="button"
               className="text-primary-container hover:underline"
@@ -203,7 +224,6 @@ export default function SignUpPage() {
     )
   }
 
-  // ─── Main sign-up form ───────────────────────────────────────────────────
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface-container-lowest px-5 py-14">
       {/* Ambient glow */}
@@ -248,7 +268,6 @@ export default function SignUpPage() {
           <div className="h-px flex-1 bg-white/[0.06]" />
         </div>
 
-        {/* Error banner */}
         {error && (
           <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/[0.08] px-3.5 py-2.5 text-xs text-red-300 leading-relaxed">
             {error}
@@ -285,11 +304,24 @@ export default function SignUpPage() {
             <input
               value={email}
               onChange={(e) => { setEmail(e.target.value); clearError() }}
+              onBlur={() => {
+                if (email.trim()) {
+                  const result = validateEmail(email)
+                  setEmailError(result.valid ? null : result.message || null)
+                }
+              }}
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
+              inputMode="email"
+              aria-invalid={email.length > 0 && !emailCheck.valid}
               className={inputCls}
             />
+            {(emailError || (email.length > 0 && !emailCheck.valid)) && (
+              <p className="mt-1 text-[11px] text-red-300">
+                {emailError || emailCheck.message}
+              </p>
+            )}
           </Field>
 
           {/* Password */}

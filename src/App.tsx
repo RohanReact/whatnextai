@@ -8,21 +8,46 @@ export default function App() {
   const { setUser, setAccessToken, setAuthLoading } = useAppStore()
 
   useEffect(() => {
-    // Hydrate auth state from persisted Supabase session on first load
-    authService.getSession().then(({ user, session }) => {
+    let cancelled = false
+
+    const bootstrapAuth = async () => {
+      setAuthLoading(true)
+
+      const { user, session, error, redirectError } = await authService.completeAuthFromRedirect()
+
+      if (cancelled) return
+
+      if (redirectError) {
+        setAuthLoading(false)
+        window.location.replace(`/sign-in?auth_error=${encodeURIComponent(redirectError)}`)
+        return
+      }
+
+      if (error) {
+        console.error('[auth] redirect completion failed:', error.message)
+        window.location.replace(
+          `/sign-in?auth_error=${encodeURIComponent(error.message)}`
+        )
+        return
+      }
+
       setUser(user)
       setAccessToken(session?.access_token ?? null)
       setAuthLoading(false)
-    })
+    }
 
-    // Keep Zustand in sync with Supabase auth events (sign in, sign out, token refresh)
+    bootstrapAuth()
+
     const subscription = authService.onAuthStateChange((user, session) => {
       setUser(user)
       setAccessToken(session?.access_token ?? null)
       setAuthLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [setUser, setAccessToken, setAuthLoading])
 
   return <RouterProvider router={router} />
