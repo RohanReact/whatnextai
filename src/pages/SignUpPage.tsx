@@ -117,7 +117,7 @@ export default function SignUpPage() {
     const fullName = `${firstName.trim()} ${lastName.trim()}`
     const cleanEmail = normalizeEmail(email)
 
-    const { user, session, error: authError } = await authService.signUp(
+    const { user, session, error: authError, isNewUser } = await authService.signUp(
       cleanEmail,
       password,
       fullName,
@@ -138,6 +138,13 @@ export default function SignUpPage() {
       } else {
         setError(authError.message)
       }
+      return
+    }
+
+    // Supabase omits identities when the email already exists — no confirmation email is sent.
+    if (!isNewUser) {
+      setIsLoading(false)
+      setError('An account with this email already exists. Try signing in instead.')
       return
     }
 

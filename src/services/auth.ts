@@ -62,6 +62,7 @@ export const authService = {
       email: cleanEmail,
       password,
       options: {
+        emailRedirectTo: getAuthCallbackUrl(),
         data: {
           full_name:          name,
           life_stage:         metadata?.lifeStage,
@@ -70,7 +71,13 @@ export const authService = {
       },
     })
     cachedAccessToken = data.session?.access_token || null
-    return { user: data.user ? toAuthUser(data.user) : null, session: data.session, error }
+    const isNewUser = (data.user?.identities?.length ?? 0) > 0
+    return {
+      user: data.user ? toAuthUser(data.user) : null,
+      session: data.session,
+      error,
+      isNewUser,
+    }
   },
 
   /** Sign in with email + password */
@@ -91,7 +98,6 @@ export const authService = {
       options: {
         redirectTo: getAuthCallbackUrl(),
         queryParams: {
-          access_type: 'offline',
           prompt: 'select_account',
         },
       },

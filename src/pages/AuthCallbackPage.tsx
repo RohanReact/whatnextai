@@ -22,7 +22,7 @@ export default function AuthCallbackPage() {
       if (redirectError || error) {
         const detail = redirectError || error?.message || 'Sign-in could not be completed.'
         setAuthLoading(false)
-        navigate(`/sign-in?auth_error=${encodeURIComponent(detail)}`, { replace: true })
+        window.location.replace(`/sign-in?auth_error=${encodeURIComponent(detail)}`)
         return
       }
 
