@@ -21,32 +21,76 @@ const toAuthUser = (user: User): AuthUser => ({
 })
 
 let cachedAccessToken: string | null = null
+let redirectSessionPromise: Promise<{ session: Session | null; error: Error | null }> | null = null
 
-/** Exchange OAuth/email ?code= param for a persisted session (PKCE flow). */
-async function exchangeCodeIfPresent(): Promise<{ session: Session | null; error: Error | null }> {
+function clearCodeFromUrl(): void {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('code')) return
+  url.searchParams.delete('code')
+  const cleaned = `${url.pathname}${url.search}${url.hash}`
+  window.history.replaceState({}, document.title, cleaned || '/')
+}
+
+/** Wait for Supabase detectSessionInUrl to finish PKCE exchange (never call exchangeCodeForSession twice). */
+async function waitForRedirectSession(): Promise<{ session: Session | null; error: Error | null }> {
   if (typeof window === 'undefined') {
     return { session: null, error: null }
   }
 
   const url = new URL(window.location.href)
-  const code = url.searchParams.get('code')
-  if (!code) {
-    return { session: null, error: null }
+  const hasCode = url.searchParams.has('code')
+
+  if (!hasCode) {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    return { session, error: error ?? null }
   }
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+  // Reuse in-flight wait when App + AuthCallbackPage both bootstrap on /auth/callback.
+  if (redirectSessionPromise) return redirectSessionPromise
 
-  // Remove ?code= from the address bar so refresh doesn't retry a spent code.
-  url.searchParams.delete('code')
-  const cleaned = `${url.pathname}${url.search}${url.hash}`
-  window.history.replaceState({}, document.title, cleaned || '/')
+  redirectSessionPromise = new Promise((resolve) => {
+    let settled = false
+    const done = (session: Session | null, error: Error | null) => {
+      if (settled) return
+      settled = true
+      redirectSessionPromise = null
+      if (session) clearCodeFromUrl()
+      resolve({ session, error })
+    }
 
-  if (error) {
-    return { session: null, error }
-  }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+        subscription.unsubscribe()
+        done(session, null)
+      }
+    })
 
-  cachedAccessToken = data.session?.access_token ?? null
-  return { session: data.session, error: null }
+    // detectSessionInUrl runs on client init; poll getSession as a fallback.
+    const poll = async (attemptsLeft: number) => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (session) {
+        subscription.unsubscribe()
+        done(session, null)
+        return
+      }
+      if (error) {
+        subscription.unsubscribe()
+        done(null, error)
+        return
+      }
+      if (attemptsLeft <= 0) {
+        subscription.unsubscribe()
+        done(null, new Error('Sign-in could not be completed. Please try again.'))
+        return
+      }
+      setTimeout(() => poll(attemptsLeft - 1), 250)
+    }
+
+    poll(32) // ~8s max
+  })
+
+  return redirectSessionPromise
 }
 
 export const authService = {
@@ -125,15 +169,12 @@ export const authService = {
       return { session: null, user: null, error: null, redirectError }
     }
 
-    const exchanged = await exchangeCodeIfPresent()
-    if (exchanged.error) {
-      return { session: null, user: null, error: exchanged.error, redirectError: null }
+    const waited = await waitForRedirectSession()
+    if (waited.error) {
+      return { session: null, user: null, error: waited.error, redirectError: null }
     }
 
-    const { data: { session }, error } = await supabase.auth.getSession()
-    if (error) {
-      return { session: null, user: null, error, redirectError: null }
-    }
+    const session = waited.session
 
     cachedAccessToken = session?.access_token ?? null
     return {

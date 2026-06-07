@@ -27,6 +27,9 @@ export function parseAuthRedirectError(): string | null {
 
   if (description) {
     const decoded = decodeURIComponent(description.replace(/\+/g, ' '))
+    if (decoded.toLowerCase().includes('pkce code verifier not found')) {
+      return 'Sign-in session expired. Please try Google sign-in again.'
+    }
     if (decoded.toLowerCase().includes('unable to exchange external code')) {
       return 'Google sign-in could not be completed. Check that Google OAuth is configured in Supabase (Client ID, Client Secret, and redirect URI).'
     }
