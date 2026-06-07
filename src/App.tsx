@@ -13,6 +13,11 @@ export default function App() {
     const bootstrapAuth = async () => {
       setAuthLoading(true)
 
+      // /auth/callback is handled by AuthCallbackPage to avoid double PKCE exchange.
+      if (window.location.pathname === '/auth/callback') {
+        return
+      }
+
       const { user, session, error, redirectError } = await authService.completeAuthFromRedirect()
 
       if (cancelled) return
