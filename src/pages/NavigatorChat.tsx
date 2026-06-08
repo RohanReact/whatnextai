@@ -47,12 +47,25 @@ export default function NavigatorChat() {
   const [isNavCollapsed, setIsNavCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const chatFormRef = useRef<HTMLFormElement>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement>(null)
+
+  const adjustChatInputHeight = () => {
+    const el = chatInputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }
 
   useLayoutEffect(() => {
     const el = messagesScrollRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [currentSession?.messages.length, isSending])
+
+  useLayoutEffect(() => {
+    adjustChatInputHeight()
+  }, [input])
 
   function waitForPaint(): Promise<void> {
     return new Promise((resolve) => {
@@ -356,7 +369,7 @@ export default function NavigatorChat() {
                   {currentSession.messages.map((message) =>
                     message.role === 'user' ? (
                       <div key={message.id} className="flex justify-end">
-                        <div className="max-w-[85%] rounded-[18px_18px_4px_18px] bg-primary-container px-4 py-3 text-[14px] leading-relaxed text-[#1a0d06] sm:max-w-[72%]">
+                        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-[18px_18px_4px_18px] bg-primary-container px-4 py-3 text-[14px] leading-relaxed text-[#1a0d06] sm:max-w-[72%]">
                           {message.content}
                         </div>
                       </div>
@@ -404,13 +417,22 @@ export default function NavigatorChat() {
                 </div>
 
                 <form
+                  ref={chatFormRef}
                   onSubmit={submitMessage}
-                  className="flex items-center gap-2.5 border-t border-white/[0.06] px-4 py-3.5 sm:px-5"
+                  className="flex items-end gap-2.5 border-t border-white/[0.06] px-4 py-3.5 sm:px-5"
                 >
-                  <input
+                  <textarea
+                    ref={chatInputRef}
                     value={input}
+                    rows={1}
                     onChange={(event) => setInput(event.target.value)}
-                    className="min-w-0 flex-1 rounded-full border border-white/[0.1] bg-surface-container px-4 py-2.5 text-[14px] text-on-surface outline-none transition placeholder:text-outline-variant focus:border-primary-container/30"
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault()
+                        chatFormRef.current?.requestSubmit()
+                      }
+                    }}
+                    className="min-h-[44px] max-h-[160px] min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-white/[0.1] bg-surface-container px-4 py-2.5 text-[14px] leading-relaxed text-on-surface outline-none transition placeholder:text-outline-variant focus:border-primary-container/30"
                     placeholder="Ask anything about this path..."
                   />
                   <button

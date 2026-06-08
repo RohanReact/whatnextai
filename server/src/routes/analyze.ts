@@ -14,6 +14,7 @@ import {
   getErrorMessage,
   parseErrorPayload,
   isFallbackError,
+  isTransientAiError,
 } from '../services/ai.js'
 import { captureServerException } from '../services/sentry.js'
 import type { AiAnalysisResult, AiPath } from '../types/index.js'
@@ -175,11 +176,13 @@ router.post('/', analyzeRateLimit, optionalAuth, analyzeUsageLimiter, async (req
       })
     }
 
-    // Don't leak internal AI error details in production
     const isProd = process.env.NODE_ENV === 'production'
-    return res.status(500).json({
+    const transient = isTransientAiError(err)
+    return res.status(transient ? 503 : 500).json({
       success: false,
-      error: isProd ? 'Analysis failed. Please try again.' : cleanMsg,
+      error: isProd
+        ? (transient ? 'AI service is busy. Please try again in a moment.' : 'Analysis failed. Please try again.')
+        : cleanMsg,
     })
   }
 })

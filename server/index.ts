@@ -27,6 +27,10 @@ import { initSentry, setupSentryExpressErrorHandler } from './src/services/sentr
 const app  = express()
 const port = Number(process.env.PORT) || 3001
 
+// Railway (and most PaaS hosts) terminate TLS at a reverse proxy and set
+// X-Forwarded-For. express-rate-limit requires trust proxy to be enabled.
+app.set('trust proxy', 1)
+
 initSentry()
 
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')

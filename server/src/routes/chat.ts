@@ -14,6 +14,7 @@ import {
   getErrorMessage,
   parseErrorPayload,
   isFallbackError,
+  isTransientAiError,
 } from '../services/ai.js'
 import { captureServerException } from '../services/sentry.js'
 
@@ -147,9 +148,12 @@ router.post('/', chatRateLimit, optionalAuth, chatUsageLimiter, async (req: Requ
     }
 
     const isProd = process.env.NODE_ENV === 'production'
-    return res.status(500).json({
+    const transient = isTransientAiError(err)
+    return res.status(transient ? 503 : 500).json({
       success: false,
-      error: isProd ? 'Chat failed. Please try again.' : cleanMsg,
+      error: isProd
+        ? (transient ? 'AI service is busy. Please try again in a moment.' : 'Chat failed. Please try again.')
+        : cleanMsg,
     })
   }
 })
