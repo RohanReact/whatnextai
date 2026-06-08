@@ -105,9 +105,31 @@ export const isFallbackError = (message: string): boolean => {
     t.includes('authentication') ||
     t.includes('401') ||
     t.includes('403') ||
-    t.includes('429')
+    t.includes('429') ||
+    t.includes('503') ||
+    t.includes('unavailable') ||
+    t.includes('high demand') ||
+    t.includes('overloaded') ||
+    t.includes('try again later')
   )
 }
+
+export const getErrorStatus = (err: unknown): number | undefined => {
+  if (typeof err === 'object' && err !== null) {
+    const status = (err as { status?: unknown }).status
+    if (typeof status === 'number') return status
+  }
+  return undefined
+}
+
+export const isTransientAiError = (err: unknown): boolean => {
+  const status = getErrorStatus(err)
+  if (status === 503 || status === 429) return true
+  const message = getErrorMessage(err, '').toLowerCase()
+  return isFallbackError(message)
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // ============================================================
 // JSON parsing
@@ -315,17 +337,25 @@ export const createAnalyzeWithGemini = async (payload: {
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i]
-    try {
-      const response = await client.models.generateContent({
-        model,
-        contents: `Category: ${payload.category}\nWhat I am doing: ${payload.situation}\nWhat is blocking me: ${payload.blockage}\nGive me my 3 paths forward.`,
-        config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: 'application/json' },
-      })
-      return parseMaybeJson(toGeminiText(response.text || response.candidates?.[0]?.content))
-    } catch (err) {
-      lastError = err
-      const msg = getErrorMessage(err, 'Gemini analyze failed')
-      if (!isFallbackError(msg) || i === models.length - 1) break
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await client.models.generateContent({
+          model,
+          contents: `Category: ${payload.category}\nWhat I am doing: ${payload.situation}\nWhat is blocking me: ${payload.blockage}\nGive me my 3 paths forward.`,
+          config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: 'application/json' },
+        })
+        return parseMaybeJson(toGeminiText(response.text || response.candidates?.[0]?.content))
+      } catch (err) {
+        lastError = err
+        const msg = getErrorMessage(err, 'Gemini analyze failed')
+        const canRetry = isTransientAiError(err) && attempt === 0
+        if (canRetry) {
+          await sleep(800)
+          continue
+        }
+        if (!isFallbackError(msg) || i === models.length - 1) break
+        break
+      }
     }
   }
 
@@ -349,19 +379,27 @@ export const createChatWithGemini = async (payload: {
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i]
-    try {
-      const response = await client.models.generateContent({
-        model,
-        contents: `${conversation}\nUSER: ${payload.message}`,
-        config: {
-          systemInstruction: `You are WhatNext navigator helping someone follow the path: "${payload.chosenPath}". Answer follow-up questions helpfully and specifically. Plain language only. Keep responses under 150 words.`,
-        },
-      })
-      return toGeminiText(response.text || response.candidates?.[0]?.content)
-    } catch (err) {
-      lastError = err
-      const msg = getErrorMessage(err, 'Gemini chat failed')
-      if (!isFallbackError(msg) || i === models.length - 1) break
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await client.models.generateContent({
+          model,
+          contents: `${conversation}\nUSER: ${payload.message}`,
+          config: {
+            systemInstruction: `You are WhatNext navigator helping someone follow the path: "${payload.chosenPath}". Answer follow-up questions helpfully and specifically. Plain language only. Keep responses under 150 words.`,
+          },
+        })
+        return toGeminiText(response.text || response.candidates?.[0]?.content)
+      } catch (err) {
+        lastError = err
+        const msg = getErrorMessage(err, 'Gemini chat failed')
+        const canRetry = isTransientAiError(err) && attempt === 0
+        if (canRetry) {
+          await sleep(800)
+          continue
+        }
+        if (!isFallbackError(msg) || i === models.length - 1) break
+        break
+      }
     }
   }
 
