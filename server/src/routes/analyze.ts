@@ -94,6 +94,7 @@ router.post('/', analyzeRateLimit, optionalAuth, analyzeUsageLimiter, async (req
 
     // -- Persist to DB when user is authenticated --
     let sessionId: string | undefined
+    let pathIds: Record<string, string> | undefined
 
     if (req.user) {
       const userId = req.user.id
@@ -131,8 +132,17 @@ router.post('/', analyzeRateLimit, optionalAuth, analyzeUsageLimiter, async (req
           recommended:    Boolean(p.recommended),
         }))
 
-        const { error: pathErr } = await supabase.from('paths').insert(pathRows)
-        if (pathErr) console.error('[DB] paths insert failed:', pathErr.message)
+        const { data: insertedPaths, error: pathErr } = await supabase
+          .from('paths')
+          .insert(pathRows)
+          .select('id, path_order')
+        if (pathErr) {
+          console.error('[DB] paths insert failed:', pathErr.message)
+        } else if (insertedPaths?.length) {
+          pathIds = Object.fromEntries(
+            insertedPaths.map((row) => [String(row.path_order), row.id as string])
+          )
+        }
 
         // Increment monthly usage counter
         const { data: currentUsage } = await supabase
@@ -148,7 +158,7 @@ router.post('/', analyzeRateLimit, optionalAuth, analyzeUsageLimiter, async (req
       }
     }
 
-    return res.json({ success: true, provider: usedProvider, sessionId, data: analysisData })
+    return res.json({ success: true, provider: usedProvider, sessionId, pathIds, data: analysisData })
 
   } catch (err) {
     console.error('[ANALYZE_ERROR]', err)

@@ -114,6 +114,11 @@ export default function InputForm() {
     try {
       const result = await analyzeInput(situation, blockage, category, wantsDownloads)
       const resolvedSessionId = authUser && result.sessionId ? result.sessionId : createSessionId()
+      const pathDbIds = result.pathIds
+        ? Object.fromEntries(
+            Object.entries(result.pathIds).map(([order, id]) => [Number(order), id])
+          )
+        : undefined
       const session: Session = {
         id: resolvedSessionId,
         createdAt: new Date(),
@@ -121,6 +126,7 @@ export default function InputForm() {
         situation,
         blockage,
         result,
+        pathDbIds,
         status: 'in-progress',
         messages: [],
       }

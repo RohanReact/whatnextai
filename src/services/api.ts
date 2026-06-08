@@ -65,9 +65,13 @@ export const analyzeInput = async (
   blockage:      string,
   category:      string,
   wantsDownloads: boolean
-): Promise<AnalysisResult & { sessionId?: string }> => {
+): Promise<AnalysisResult & { sessionId?: string; pathIds?: Record<string, string> }> => {
   const response = await api.post('/analyze', { situation, blockage, category, wantsDownloads })
-  return { ...response.data.data, sessionId: response.data.sessionId }
+  return {
+    ...response.data.data,
+    sessionId: response.data.sessionId,
+    pathIds: response.data.pathIds,
+  }
 }
 
 // ---- Chat ----
@@ -91,6 +95,7 @@ export const fetchSessions = async () => {
     return response.data.data as Array<{
       id: string; category: string; situation: string
       summary: string; status: string; created_at: string
+      progress_percent?: number; completed_steps?: number | null; total_steps?: number | null
     }>
   })
 }

@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Will the prices change after launch?',
-    a: 'The prices shown (~₹299 and ~₹799) are estimates. Waiting list members will be offered a lower launch price as a thank-you for their early support. We will always honour that price for as long as you stay subscribed.',
+    a: 'The prices shown (~$3 and ~$5) are estimates. Waiting list members will be offered a lower launch price as a thank-you for their early support. We will always honour that price for as long as you stay subscribed.',
   },
   {
     q: 'Is my data private and secure?',
@@ -143,7 +143,7 @@ export default function PricingPage() {
         name: 'Navigator',
         availability: 'Coming soon',
         availabilityType: 'soon',
-        price: '~₹299',
+        price: '~$3',
         period: '/ month',
         priceNote: 'Exact price confirmed at launch.',
         description:
@@ -164,7 +164,7 @@ export default function PricingPage() {
         name: 'Guide',
         availability: 'Coming soon',
         availabilityType: 'soon',
-        price: '~₹799',
+        price: '~$5',
         period: '/ month',
         priceNote: 'Exact price confirmed at launch.',
         description: 'For teams, coaches, and power users who need the complete suite.',

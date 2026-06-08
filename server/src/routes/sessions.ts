@@ -5,6 +5,18 @@ import { supabase }    from '../services/supabase.js'
 
 const router = Router()
 
+function computePathProgress(
+  stepCount: number,
+  completedByIndex: boolean[] | undefined
+): { completedSteps: number; progressPercent: number } {
+  if (stepCount <= 0) return { completedSteps: 0, progressPercent: 0 }
+  const completedSteps = Array.from({ length: stepCount }, (_, idx) => Boolean(completedByIndex?.[idx])).filter(Boolean).length
+  return {
+    completedSteps,
+    progressPercent: Math.round((completedSteps / stepCount) * 100),
+  }
+}
+
 // GET /sessions — list all sessions for the authenticated user
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   const userId = req.user!.id
@@ -21,7 +33,76 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: 'Failed to fetch sessions.' })
   }
 
-  return res.json({ success: true, data: sessions })
+  const sessionList = sessions || []
+  if (sessionList.length === 0) {
+    return res.json({ success: true, data: [] })
+  }
+
+  const sessionIds = sessionList.map((s) => s.id)
+  const { data: paths } = await supabase
+    .from('paths')
+    .select('id, session_id, steps')
+    .in('session_id', sessionIds)
+
+  const pathRows = paths || []
+  const pathIds = pathRows.map((p) => p.id)
+  const progressByPathId: Record<string, boolean[]> = {}
+
+  if (pathIds.length > 0) {
+    const { data: progress } = await supabase
+      .from('path_step_progress')
+      .select('path_id, step_index, completed')
+      .eq('user_id', userId)
+      .in('path_id', pathIds)
+
+    for (const row of progress || []) {
+      if (!progressByPathId[row.path_id]) progressByPathId[row.path_id] = []
+      progressByPathId[row.path_id][row.step_index] = row.completed
+    }
+  }
+
+  const pathsBySession = new Map<string, typeof pathRows>()
+  for (const path of pathRows) {
+    const bucket = pathsBySession.get(path.session_id) ?? []
+    bucket.push(path)
+    pathsBySession.set(path.session_id, bucket)
+  }
+
+  const enriched = sessionList.map((session) => {
+    if (session.status === 'completed') {
+      return { ...session, progress_percent: 100, completed_steps: null, total_steps: null }
+    }
+    if (session.status === 'abandoned') {
+      return { ...session, progress_percent: 0, completed_steps: null, total_steps: null }
+    }
+
+    const sessionPaths = pathsBySession.get(session.id) ?? []
+    let bestProgress = 0
+    let bestCompleted = 0
+    let bestTotal = 0
+
+    for (const path of sessionPaths) {
+      const steps = Array.isArray(path.steps) ? path.steps : []
+      const { completedSteps, progressPercent } = computePathProgress(
+        steps.length,
+        progressByPathId[path.id]
+      )
+      if (progressPercent > bestProgress) {
+        bestProgress = progressPercent
+        bestCompleted = completedSteps
+        bestTotal = steps.length
+      }
+    }
+
+    return {
+      ...session,
+      progress_percent: bestProgress,
+      completed_steps: bestTotal > 0 ? bestCompleted : null,
+      total_steps: bestTotal > 0 ? bestTotal : null,
+    }
+  })
+
+  return res.json({ success: true, data: enriched })
 })
 
 // GET /sessions/:id — full session with paths and step progress
