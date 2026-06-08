@@ -4,6 +4,7 @@ import PageWrapper from '../components/layout/PageWrapper'
 import { fetchSession } from '../services/api'
 import useAppStore from '../store/useAppStore'
 import type { Session, Path, ChatMessage } from '../types'
+import { normalizeStepStatus } from '../lib/sessionProgress'
 
 interface ServerPath {
   id: string
@@ -40,12 +41,6 @@ interface ServerSessionPayload {
   messages: ServerMessage[]
 }
 
-const normalizeStepStatus = (existing: boolean[] | undefined, stepCount: number): boolean[] => {
-  if (!existing) return Array.from({ length: stepCount }, () => false)
-  const padded = Array.from({ length: stepCount }, (_, idx) => Boolean(existing[idx]))
-  return padded
-}
-
 export default function SessionDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -74,10 +69,12 @@ export default function SessionDetailPage() {
 
         const payload = raw as ServerSessionPayload
         const pathIdToOrder = new Map<string, number>()
+        const pathDbIds: Record<number, string> = {}
 
         const paths: Path[] = (payload.paths || []).map((path, index) => {
           const mappedId = Number(path.path_order || index + 1)
           pathIdToOrder.set(path.id, mappedId)
+          pathDbIds[mappedId] = path.id
           return {
             id: mappedId,
             title: path.title || '',
@@ -112,7 +109,14 @@ export default function SessionDetailPage() {
             timestamp: new Date(msg.created_at),
           }))
 
-        const chosenPath = paths.find((path) => path.recommended) || paths[0]
+        const chosenPath =
+          paths.find((path) => {
+            const status = pathStepStatus[String(path.id)]
+            return status?.some(Boolean)
+          }) ||
+          paths.find((path) => path.recommended) ||
+          paths[0]
+
         const session: Session = {
           id: payload.id,
           createdAt: new Date(payload.created_at),
@@ -124,6 +128,7 @@ export default function SessionDetailPage() {
             paths,
           },
           chosenPathId: chosenPath?.id,
+          pathDbIds,
           pathStepStatus,
           status: payload.status || 'in-progress',
           messages,

@@ -5,6 +5,7 @@ import { motion } from 'motion/react'
 import PageWrapper from '../components/layout/PageWrapper'
 import useAppStore from '../store/useAppStore'
 import { fetchSessions } from '../services/api'
+import { getSessionProgressMeta } from '../lib/sessionProgress'
 
 interface SessionSummary {
   id: string
@@ -13,6 +14,9 @@ interface SessionSummary {
   summary: string
   status: string
   created_at: string
+  progress_percent?: number
+  completed_steps?: number | null
+  total_steps?: number | null
 }
 
 const fadeUp = {
@@ -49,40 +53,6 @@ function truncate(text: string, max = 72): string {
   return `${trimmed.slice(0, max).trim()}…`
 }
 
-function statusMeta(status: string) {
-  if (status === 'completed') {
-    return {
-      label: 'Completed',
-      pill: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400',
-      progress: 100,
-      progressColor: 'bg-emerald-500',
-      progressLabel: 'Session completed ✓',
-      progressLabelColor: 'text-emerald-400',
-      action: 'View recap →',
-    }
-  }
-  if (status === 'abandoned') {
-    return {
-      label: 'Paused',
-      pill: 'bg-white/[0.06] border-white/[0.12] text-outline-variant',
-      progress: 0,
-      progressColor: 'bg-outline-variant',
-      progressLabel: 'Paused session',
-      progressLabelColor: 'text-outline-variant',
-      action: 'Open session →',
-    }
-  }
-  return {
-    label: 'In progress',
-    pill: 'bg-primary-container/10 border-primary-container/25 text-primary-container',
-    progress: 28,
-    progressColor: 'bg-primary-container',
-    progressLabel: 'Session in progress',
-    progressLabelColor: 'text-outline-variant',
-    action: 'Open session →',
-  }
-}
-
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-white/5 ${className ?? ''}`} />
 }
@@ -94,7 +64,12 @@ function HistoryCard({
   session: SessionSummary
   onOpen: () => void
 }) {
-  const meta = statusMeta(session.status)
+  const meta = getSessionProgressMeta(
+    session.status,
+    session.progress_percent ?? 0,
+    session.completed_steps ?? undefined,
+    session.total_steps ?? undefined
+  )
 
   return (
     <motion.article
@@ -175,27 +150,40 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const loadSessions = (silent = false) => {
+    if (!silent) {
+      setIsLoading(true)
+      setError(null)
+    }
+    return fetchSessions()
+      .then((data) => {
+        setSessions(data as SessionSummary[])
+      })
+      .catch(() => {
+        if (!silent) setError('Could not load history. Please try again.')
+      })
+      .finally(() => {
+        if (!silent) setIsLoading(false)
+      })
+  }
+
   useEffect(() => {
     if (!authUser) {
       setIsLoading(false)
       return
     }
 
-    let cancelled = false
-    fetchSessions()
-      .then((data) => {
-        if (!cancelled) setSessions(data as SessionSummary[])
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not load history. Please try again.')
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
+    void loadSessions()
+  }, [authUser])
 
-    return () => {
-      cancelled = true
+  useEffect(() => {
+    if (!authUser) return
+
+    const onFocus = () => {
+      void loadSessions(true)
     }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [authUser])
 
   const grouped = useMemo(() => groupSessions(sessions), [sessions])

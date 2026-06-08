@@ -32,6 +32,7 @@ export interface Session {
   blockage: string
   result: AnalysisResult
   chosenPathId?: number
+  pathDbIds?: Record<number, string>
   pathStepStatus?: Record<string, boolean[]>
   status: 'in-progress' | 'completed' | 'abandoned'
   messages: ChatMessage[]
@@ -51,5 +52,6 @@ export interface AppState {
   setHasSeenWelcome: (seen: boolean) => void
   setHasCompletedOnboarding: (completed: boolean) => void
   addToHistory: (session: Session) => void
+  clearLocalHistory: () => void
   markGuestAnalysisUsed: () => void
 }

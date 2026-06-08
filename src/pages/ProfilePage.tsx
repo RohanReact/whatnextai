@@ -171,7 +171,7 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const { user: authUser, clearAuth, isAuthLoading } = useAppStore()
+  const { user: authUser, clearAuth, isAuthLoading, clearLocalHistory } = useAppStore()
 
   const [data,       setData]      = useState<ProfileData | null>(null)
   const [isLoading,  setIsLoading] = useState(true)
@@ -305,6 +305,7 @@ export default function ProfilePage() {
     try {
       await clearAllHistory()
       useAppStore.getState().setCurrentSession(null)
+      clearLocalHistory()
       await reloadProfile()
       setActionMessage('History cleared.')
     } catch {
@@ -589,10 +590,10 @@ export default function ProfilePage() {
                 <li
                   key={s.id}
                   className={`flex gap-3 items-start py-2.5 border-b-[0.5px] border-surface-container-low last:border-none last:pb-0 hover:bg-surface-container-low/50 rounded-lg px-1 -mx-1 transition-colors ${btnBase}`}
-                  onClick={() => navigate('/history')}
+                  onClick={() => navigate(`/sessions/${s.id}`)}
                 >
                   <div className="w-[34px] h-[34px] rounded-[9px] bg-surface-container-low flex items-center justify-center text-base shrink-0 select-none">
-                    {LIFE_STAGE_ICONS[s.situation?.slice(0, 20)] ?? '💡'}
+                    💡
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-on-surface line-clamp-1">{s.situation}</p>
@@ -617,20 +618,24 @@ export default function ProfilePage() {
         <section className="bg-surface-container border-[0.5px] border-red-500/15 rounded-[14px] p-5 mb-3.5">
           <h2 className="text-[13px] font-semibold text-red-400 mb-3">Account actions</h2>
           <div className="flex flex-col gap-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-[13px] font-medium text-on-surface">Clear all history</p>
-                <p className="text-xs text-outline-variant mt-0.5">Remove all past sessions and results permanently</p>
+            {stats.totalSessions > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-[13px] font-medium text-on-surface">Clear all history</p>
+                  <p className="text-xs text-outline-variant mt-0.5">
+                    Remove all {stats.totalSessions} saved session{stats.totalSessions === 1 ? '' : 's'} and step progress permanently
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  disabled={isClearingHistory}
+                  className={`py-2 px-3.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/8 border-[0.5px] border-red-500/20 hover:bg-red-500/15 hover:border-red-500/35 font-sans whitespace-nowrap self-start sm:self-center ${btnBase}`}
+                >
+                  {isClearingHistory ? 'Clearing…' : 'Clear history'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleClearHistory}
-                disabled={isClearingHistory}
-                className={`py-2 px-3.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/8 border-[0.5px] border-red-500/20 hover:bg-red-500/15 hover:border-red-500/35 font-sans whitespace-nowrap self-start sm:self-center ${btnBase}`}
-              >
-                {isClearingHistory ? 'Clearing…' : 'Clear history'}
-              </button>
-            </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-[13px] font-medium text-on-surface">Delete account</p>

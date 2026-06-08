@@ -33,6 +33,7 @@ const useAppStore = create<StoreState>()(
       setHasCompletedOnboarding:  (completed) => set({ hasCompletedOnboarding: completed }),
       addToHistory:               (session) =>
         set((state) => ({ history: [session, ...state.history] })),
+      clearLocalHistory:          () => set({ history: [] }),
       markGuestAnalysisUsed:      () =>
         set((state) => ({
           guestAnalysesUsed: Math.min(state.guestAnalysesUsed + 1, 99),
